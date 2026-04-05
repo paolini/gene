@@ -145,6 +145,11 @@ export default function PersonPage() {
                 {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
                 {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
               </div>
+              <div style={{ marginTop: 12 }}>
+                <Link href={`/tree/person/${person.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 14 }}>
+                  Open interactive person tree
+                </Link>
+              </div>
             </header>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
@@ -164,8 +169,13 @@ export default function PersonPage() {
                         </div>
                         <div style={{ fontSize: 12, color: '#8c7b69', marginTop: 4 }}>{family.gedId || familyLabel(family, person.id)}</div>
                         <div style={{ marginTop: 6 }}>
-                          <Link href={`/family/${family.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 13 }}>
-                            Open family tree
+                          <Link href={`/tree/person/${person.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 13 }}>
+                            Open person tree
+                          </Link>
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                          <Link href={`/family/${family.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 12 }}>
+                            Open family-centered tree
                           </Link>
                         </div>
                       </li>
@@ -190,8 +200,13 @@ export default function PersonPage() {
                         </div>
                         <div style={{ fontSize: 12, color: '#8c7b69', marginTop: 4 }}>{family.gedId}</div>
                         <div style={{ marginTop: 6 }}>
-                          <Link href={`/family/${family.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 13 }}>
-                            Open family tree
+                          <Link href={`/tree/person/${person.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 13 }}>
+                            Open person tree
+                          </Link>
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                          <Link href={`/family/${family.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 12 }}>
+                            Open family-centered tree
                           </Link>
                         </div>
                       </li>

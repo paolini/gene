@@ -42,6 +42,24 @@ function familyLabel(family) {
   return family?.gedId || 'Unnamed family';
 }
 
+function PersonCard({ data }) {
+  const person = data.person;
+
+  return (
+    <div style={{ minWidth: 190, background: '#f8f4ec', border: '1px solid #d7ccb9', borderRadius: 12, padding: 12, boxShadow: '0 6px 18px rgba(78, 53, 32, 0.08)', position: 'relative' }}>
+      <Handle type="target" position={Position.Top} id="top" style={{ background: '#6f8d79', width: 9, height: 9 }} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 9, height: 9 }} />
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{personLabel(person)}</div>
+      <div style={{ fontSize: 12, color: '#6d5a48', marginBottom: 8 }}>{person.gedId || 'No GEDCOM id'}</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 12 }}>
+          Open person
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function FamilyCard({ data }) {
   const family = data.family;
 
@@ -66,7 +84,7 @@ function FamilyCard({ data }) {
             Wife ancestors
           </button>
         ) : null}
-        {family.children?.some((child) => child.fams?.length) ? (
+        {family.children?.length ? (
           <button onClick={() => data.onExpandDescendants(family.id, family.children)} style={{ padding: '6px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer' }}>
             Descendants
           </button>
@@ -76,12 +94,13 @@ function FamilyCard({ data }) {
   );
 }
 
-const nodeTypes = { familyCard: FamilyCard };
+const nodeTypes = { familyCard: FamilyCard, personCard: PersonCard };
 
 export default function FamilyPage() {
   const router = useRouter();
   const { id } = router.query;
   const [familyMap, setFamilyMap] = useState({});
+  const [personMap, setPersonMap] = useState({});
   const [edges, setEdges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -115,6 +134,7 @@ export default function FamilyPage() {
           return;
         }
         setFamilyMap(family ? { [family.id]: { family, level: 0, x: 0 } } : {});
+        setPersonMap({});
         setEdges([]);
       } catch (loadError) {
         if (!cancelled) {
@@ -173,6 +193,29 @@ export default function FamilyPage() {
     }
 
     for (const [index, child] of (children || []).entries()) {
+      const childNodeId = `person-${child.id}`;
+      setPersonMap((current) => current[childNodeId]
+        ? current
+        : {
+            ...current,
+            [childNodeId]: {
+              person: child,
+              level: sourceEntry.level + 1,
+              x: sourceEntry.x + index - Math.floor((children.length || 1) / 2)
+            }
+          });
+      setEdges((current) => current.some((edge) => edge.id === `${sourceFamilyId}-${childNodeId}`)
+        ? current
+        : current.concat({
+            id: `${sourceFamilyId}-${childNodeId}`,
+            source: sourceFamilyId,
+            sourceHandle: 'bottom',
+            target: childNodeId,
+            targetHandle: 'top',
+            type: 'smoothstep',
+            style: { stroke: '#6f8d79', strokeWidth: 2 }
+          }));
+
       for (const familyRef of child.fams || []) {
         if (!familyRef?.id || familyMap[familyRef.id]) {
           continue;
@@ -182,15 +225,15 @@ export default function FamilyPage() {
           ...current,
           [family.id]: {
             family,
-            level: sourceEntry.level + 1,
+            level: sourceEntry.level + 2,
             x: sourceEntry.x + index - Math.floor((children.length || 1) / 2)
           }
         }));
-        setEdges((current) => current.some((edge) => edge.id === `${sourceFamilyId}-${family.id}`)
+        setEdges((current) => current.some((edge) => edge.id === `${childNodeId}-${family.id}`)
           ? current
           : current.concat({
-            id: `${sourceFamilyId}-${family.id}`,
-            source: sourceFamilyId,
+            id: `${childNodeId}-${family.id}`,
+            source: childNodeId,
             sourceHandle: 'bottom',
             target: family.id,
             targetHandle: 'top',
@@ -202,17 +245,25 @@ export default function FamilyPage() {
   }
 
   const nodes = useMemo(
-    () => Object.values(familyMap).map((entry) => ({
-      id: entry.family.id,
-      type: 'familyCard',
-      position: { x: entry.x * 320, y: entry.level * 240 },
-      data: {
-        family: entry.family,
-        onExpandAncestors: expandAncestor,
-        onExpandDescendants: expandDescendants
-      }
-    })),
-    [familyMap]
+    () => [
+      ...Object.values(familyMap).map((entry) => ({
+        id: entry.family.id,
+        type: 'familyCard',
+        position: { x: entry.x * 320, y: entry.level * 240 },
+        data: {
+          family: entry.family,
+          onExpandAncestors: expandAncestor,
+          onExpandDescendants: expandDescendants
+        }
+      })),
+      ...Object.entries(personMap).map(([nodeId, entry]) => ({
+        id: nodeId,
+        type: 'personCard',
+        position: { x: entry.x * 320, y: entry.level * 240 },
+        data: { person: entry.person }
+      }))
+    ],
+    [familyMap, personMap]
   );
 
   return (
