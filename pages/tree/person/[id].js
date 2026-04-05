@@ -6,7 +6,7 @@ import ReactFlow, { Background, Controls, Handle, MiniMap, Position } from 'reac
 import 'reactflow/dist/style.css';
 
 const elk = new ELK();
-const NODE_WIDTH = 300;
+const NODE_WIDTH = 250;
 
 const personTreeQuery = `
   query PersonTree($id: ID!) {
@@ -85,58 +85,58 @@ function spouseOf(family, personId) {
 function PersonNode({ data }) {
   const person = data.person;
   const parentFamily = person.famc?.[0] || null;
+  const showParents = parentFamily && !data.parentsExpanded;
+  const families = person.fams || [];
 
   return (
-    <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
+    <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
       <Handle type="target" position={Position.Top} id="top" style={{ background: '#7a4b2a', width: 10, height: 10 }} />
       <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 10, height: 10 }} />
 
-      <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{personName(person)}</div>
-      <div style={{ fontSize: 12, color: '#6d5a48', marginBottom: 6 }}>{person.gedId} {person.sex ? `• ${person.sex}` : ''}</div>
-      <div style={{ fontSize: 12, color: '#6d5a48', marginBottom: 12 }}>
-        {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
-        {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
-      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>{personName(person)}</div>
+          <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 10 }}>
+            {person.sex || 'Unknown sex'}
+          </div>
+          <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: showParents ? 10 : 0, lineHeight: 1.35 }}>
+            {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
+            {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
+          </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <strong style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Parents</strong>
-        {parentFamily ? (
-          <>
-            <div style={{ fontSize: 12, color: '#6d5a48', marginBottom: 6 }}>
-              {[parentFamily.husband?.name, parentFamily.wife?.name].filter(Boolean).join(' and ') || parentFamily.gedId}
+          {showParents ? (
+            <div>
+              <strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Parents</strong>
+              <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
+                {[parentFamily.husband?.name, parentFamily.wife?.name].filter(Boolean).join(' and ') || parentFamily.gedId}
+              </div>
+              <button onClick={() => data.onExpandParents(person)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 11 }}>
+                Show parents
+              </button>
             </div>
-            <button onClick={() => data.onExpandParents(person)} style={{ padding: '6px 8px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 12 }}>
-              Show parents
-            </button>
-          </>
-        ) : (
-          <div style={{ fontSize: 12, color: '#8b7a69' }}>No parent family</div>
-        )}
-      </div>
+          ) : null}
+        </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <strong style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Spouse families</strong>
-        {person.fams?.length ? (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {person.fams.map((family) => (
-              <div key={family.id} style={{ background: '#fcf7ef', border: '1px solid #eadcc9', borderRadius: 10, padding: 10 }}>
-                <div style={{ fontSize: 12, color: '#6d5a48', marginBottom: 4 }}>Spouse: {personName(spouseOf(family, person.id))}</div>
-                <div style={{ fontSize: 12, color: '#6d5a48', marginBottom: 6 }}>
-                  Children: {family.children?.length ? family.children.map((child) => personName(child)).join(', ') : 'None'}
+        {families.length ? (
+          <div style={{ width: 92, flex: '0 0 92px', display: 'grid', gap: 6, justifyItems: 'start' }}>
+            {families.map((family) => (
+              <div key={family.id} style={{ width: '100%' }}>
+                <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: data.expandedFamilyIds?.has(family.id) ? 0 : 6, lineHeight: 1.35, textAlign: 'left' }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{personName(spouseOf(family, person.id))}</span>
                 </div>
-                <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '6px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 12 }}>
-                  Show descendants
-                </button>
+                {!data.expandedFamilyIds?.has(family.id) ? (
+                  <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 11, width: '100%' }}>
+                    Children
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
-        ) : (
-          <div style={{ fontSize: 12, color: '#8b7a69' }}>No spouse families</div>
-        )}
+        ) : null}
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 12 }}>
+        <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 11 }}>
           Open detail
         </Link>
       </div>
@@ -146,22 +146,40 @@ function PersonNode({ data }) {
 
 const nodeTypes = { personNode: PersonNode };
 
-function estimateNodeHeight(person) {
-  const spouseFamilyCount = person.fams?.length || 0;
-  const hasParentFamily = Boolean(person.famc?.[0]);
+function estimateNodeHeight(person, layoutState) {
+  const familyCount = person.fams?.length || 0;
+  const showParents = Boolean(person.famc?.[0]) && !layoutState.parentsExpanded;
+  const visibleFamilyCount = (person.fams || []).filter((family) => !layoutState.expandedFamilyIds.has(family.id)).length;
+  const leftColumnHeight = 82 + (showParents ? 58 : 0);
+  const rightColumnHeight = familyCount ? familyCount * 44 + visibleFamilyCount * 34 : 0;
 
-  return 220 + (hasParentFamily ? 70 : 35) + (spouseFamilyCount ? spouseFamilyCount * 110 : 35);
+  return Math.max(leftColumnHeight, rightColumnHeight) + 36;
+}
+
+function getLayoutState(personId, person, edges) {
+  const parentsExpanded = edges.some((edge) => edge.target === personId);
+  const expandedFamilyIds = new Set(
+    (person.fams || [])
+      .filter((family) => edges.some((edge) => edge.id.startsWith(`${personId}-${family.id}-`)))
+      .map((family) => family.id)
+  );
+
+  return { parentsExpanded, expandedFamilyIds };
 }
 
 function buildFallbackNodes(personMap) {
-  return Object.values(personMap).map((entry) => ({
-    id: entry.person.id,
-    type: 'personNode',
-    position: { x: entry.x * 380, y: entry.level * 360 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-    data: { person: entry.person }
-  }));
+  return Object.values(personMap).map((entry) => {
+    const layoutState = getLayoutState(entry.person.id, entry.person, []);
+
+    return {
+      id: entry.person.id,
+      type: 'personNode',
+      position: { x: entry.x * 380, y: entry.level * 360 },
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
+      data: { person: entry.person, ...layoutState }
+    };
+  });
 }
 
 async function buildElkLayout(personMap, edges, rootId) {
@@ -185,11 +203,15 @@ async function buildElkLayout(personMap, edges, rootId) {
       'elk.spacing.nodeNode': '70',
       'elk.layered.spacing.nodeNodeBetweenLayers': '120'
     },
-    children: entries.map((entry) => ({
-      id: entry.person.id,
-      width: NODE_WIDTH,
-      height: estimateNodeHeight(entry.person)
-    })),
+    children: entries.map((entry) => {
+      const layoutState = getLayoutState(entry.person.id, entry.person, edges);
+
+      return {
+        id: entry.person.id,
+        width: NODE_WIDTH,
+        height: estimateNodeHeight(entry.person, layoutState)
+      };
+    }),
     edges: edges.map((edge) => ({
       id: edge.id,
       sources: [edge.source],
@@ -204,6 +226,7 @@ async function buildElkLayout(personMap, edges, rootId) {
   const rootOffsetY = rootNode?.y || 0;
 
   return entries.map((entry) => {
+    const layoutState = getLayoutState(entry.person.id, entry.person, edges);
     const positionedNode = positionedNodes.get(entry.person.id);
 
     return {
@@ -215,7 +238,7 @@ async function buildElkLayout(personMap, edges, rootId) {
       },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
-      data: { person: entry.person }
+      data: { person: entry.person, ...layoutState }
     };
   });
 }
