@@ -87,7 +87,7 @@ function spouseOf(family, personId) {
 function PersonNode({ data }) {
   const person = data.person;
   const parentFamily = person.famc?.[0] || null;
-  const showParents = parentFamily && !data.parentsExpanded;
+  const showParents = data.showParentControls && parentFamily && !data.parentsExpanded;
   const families = (person.fams || []).filter((family) => !data.expandedFamilyIds?.has(family.id));
 
   return (
@@ -212,6 +212,7 @@ function buildGraphModel(personMap, expandedParentFamilyIds, expandedDescFamilyI
         person: entry.person,
         parentsExpanded: expandedParentFamilyIds.includes(entry.person.famc?.[0]?.id),
         expandedFamilyIds: new Set(expandedDescFamilyIds),
+        showParentControls: entry.showParentControls !== false,
         hasTopHandle: expandedParentFamilyIds.includes(entry.person.famc?.[0]?.id),
         hasBottomHandle: (entry.person.fams || []).some((family) => expandedDescFamilyIds.includes(family.id)),
         hasLeftHandle: false,
@@ -516,10 +517,10 @@ export default function PersonTreePage() {
         if (cancelled) {
           return;
         }
-        setPersonMap(person ? { [person.id]: { person, level: 0, x: 0 } } : {});
+        setPersonMap(person ? { [person.id]: { person, level: 0, x: 0, showParentControls: true } } : {});
         setExpandedParentFamilyIds([]);
         setExpandedDescFamilyIds([]);
-        setNodes(person ? buildFallbackNodes(buildGraphModel({ [person.id]: { person, level: 0, x: 0 } }, [], []).nodes) : []);
+        setNodes(person ? buildFallbackNodes(buildGraphModel({ [person.id]: { person, level: 0, x: 0, showParentControls: true } }, [], []).nodes) : []);
         setRenderedEdges([]);
       } catch (loadError) {
         if (!cancelled) {
@@ -581,14 +582,15 @@ export default function PersonTreePage() {
     };
   }, [graphModel, id]);
 
-  async function ensurePersonNode(personId, level, x) {
+  async function ensurePersonNode(personId, level, x, options = {}) {
     if (!personId || personMap[personId]) {
       return personMap[personId]?.person || null;
     }
+
     const person = await fetchPerson(personId);
     setPersonMap((current) => current[person.id] ? current : {
       ...current,
-      [person.id]: { person, level, x }
+      [person.id]: { person, level, x, showParentControls: options.showParentControls !== false }
     });
     return person;
   }
@@ -602,7 +604,7 @@ export default function PersonTreePage() {
 
     const parents = [family.husband, family.wife].filter(Boolean);
     for (const [index, parentRef] of parents.entries()) {
-      await ensurePersonNode(parentRef.id, sourceEntry.level - 1, sourceEntry.x + (index === 0 ? -1 : 1));
+      await ensurePersonNode(parentRef.id, sourceEntry.level - 1, sourceEntry.x + (index === 0 ? -1 : 1), { showParentControls: true });
     }
 
     setExpandedParentFamilyIds((current) => current.includes(family.id) ? current : current.concat(family.id));
@@ -616,11 +618,11 @@ export default function PersonTreePage() {
 
     const spouse = spouseOf(family, person.id);
     if (spouse?.id) {
-      await ensurePersonNode(spouse.id, sourceEntry.level, sourceEntry.x + 1);
+      await ensurePersonNode(spouse.id, sourceEntry.level, sourceEntry.x + 1, { showParentControls: true });
     }
 
     for (const [index, childRef] of (family.children || []).entries()) {
-      await ensurePersonNode(childRef.id, sourceEntry.level + 1, sourceEntry.x + index - Math.floor((family.children.length || 1) / 2));
+      await ensurePersonNode(childRef.id, sourceEntry.level + 1, sourceEntry.x + index - Math.floor((family.children.length || 1) / 2), { showParentControls: false });
     }
 
     setExpandedDescFamilyIds((current) => current.includes(family.id) ? current : current.concat(family.id));

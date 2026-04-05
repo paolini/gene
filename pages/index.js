@@ -105,43 +105,11 @@ export default function Home() {
                 </header>
 
                 <section style={{ marginBottom: 12 }}>
-                  <strong style={{ display: 'block', marginBottom: 6 }}>Spouse families</strong>
-                  {p.fams && p.fams.length > 0 ? (
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {p.fams.map((family) => (
-                        <li key={family.id} style={{ marginBottom: 6 }}>
-                          <div>{familyLabel(family, p.id)}</div>
-                          <div style={{ fontSize: 13, color: '#7b6a59' }}>
-                            {family.children && family.children.length > 0 ? (
-                              <>
-                                Children:{' '}
-                                {family.children.map((child, index) => (
-                                  <span key={child.id || `${child.name}-${index}`}>
-                                    {index > 0 ? ', ' : ''}
-                                    {renderPersonName(child.name, child.id)}
-                                  </span>
-                                ))}
-                              </>
-                            ) : 'No children listed'}
-                          </div>
-                          <div style={{ marginTop: 4 }}>
-                            <span style={{ fontSize: 12, color: '#365f48' }}>Open from person page for tree view</span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div style={{ color: '#7b6a59' }}>No spouse families</div>
-                  )}
-                </section>
-
-                <section>
-                  <strong style={{ display: 'block', marginBottom: 6 }}>Family of origin</strong>
                   {p.famc && p.famc.length > 0 ? (
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       {p.famc.map((family) => (
                         <li key={family.id} style={{ marginBottom: 6 }}>
-                          <div>
+                          <div style={{ fontSize: 13, color: '#7b6a59' }}>
                             Parents:{' '}
                             {[family.husband, family.wife].filter(Boolean).length > 0
                               ? [family.husband, family.wife].filter(Boolean).map((parent, index) => (
@@ -152,7 +120,7 @@ export default function Home() {
                                 ))
                               : family.gedId}
                           </div>
-                          <div style={{ fontSize: 13, color: '#7b6a59' }}>
+                          <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
                             Siblings:{' '}
                             {(family.children || []).filter((child) => child.id !== p.id).length > 0
                               ? (family.children || [])
@@ -169,7 +137,34 @@ export default function Home() {
                       ))}
                     </ul>
                   ) : (
-                    <div style={{ color: '#7b6a59' }}>No origin family</div>
+                    null
+                  )}
+                </section>
+
+                <section>
+                  {p.fams && p.fams.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {p.fams.map((family) => (
+                        <li key={family.id} style={{ marginBottom: 6 }}>
+                          <div>Spouse: {renderPersonName([family.husband, family.wife].find((candidate) => candidate && candidate.id !== p.id)?.name, familyLabel(family, p.id))}</div>
+                          <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
+                            {family.children && family.children.length > 0 ? (
+                              <>
+                                Children:{' '}
+                                {family.children.map((child, index) => (
+                                  <span key={child.id || `${child.name}-${index}`}>
+                                    {index > 0 ? ', ' : ''}
+                                    {renderPersonName(child.name, child.id)}
+                                  </span>
+                                ))}
+                              </>
+                            ) : 'No children listed'}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    null
                   )}
                 </section>
               </article>

@@ -178,7 +178,7 @@ export default function PersonPage() {
                     ))}
                   </ul>
                 ) : (
-                  <div style={{ color: '#7b6a59' }}>No origin family</div>
+                  null
                 )}
               </section>
 
@@ -199,7 +199,7 @@ export default function PersonPage() {
                     ))}
                   </ul>
                 ) : (
-                  <div style={{ color: '#7b6a59' }}>No spouse families</div>
+                  null
                 )}
               </section>
             </div>

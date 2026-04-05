@@ -22,8 +22,10 @@ Current stack:
 
 Implemented features:
 - Ricerca individui nella home (`pages/index.js`); se la casella di ricerca e' vuota non mostra risultati.
-- Pagina dettaglio individuo (`pages/person/[id].js`) con link navigabili a genitori, figli, fratelli e famiglie.
-- Pagina albero persona (`pages/tree/person/[id].js`) con vista client-side basata su React Flow.
+- Formattazione nomi GEDCOM lato UI: `Nome /Cognome/` viene reso senza slash, con cognome in evidenza e metadati inline (sesso, nascita, morte).
+- Pagina dettaglio individuo (`pages/person/[id].js`) semplificata: famiglie in colonna, senza GEDCOM id visibili, con accesso alla vista albero tramite icona `🌳` nell'angolo alto destro.
+- Pagina albero persona (`pages/tree/person/[id].js`) con vista client-side basata su React Flow, nodi persona cliccabili e controlli `Expand` inline per genitori e famiglie.
+- Vista albero con connettori spouse-family corretti: aggancio laterale coerente, archi diretti verso il nodo famiglia, figli espansi senza pannello genitori, coniugi con pannello genitori disponibile.
 - Import GEDCOM rigoroso con:
   - parsing di `INDI` e `FAM`
   - export intermedio JSON in `data/gedcom.json`
@@ -72,7 +74,7 @@ Development & run
 
 Known gaps / next steps:
 1. Migliorare il layout automatico del grafo React Flow person-centered; attualmente il posizionamento e' semplice.
-2. Rendere cliccabili anche i nodi persona direttamente dentro React Flow.
+2. Valutare un indicatore visivo migliore per distinguere i nodi caricati per ascendenza rispetto a quelli caricati da una espansione discendente.
 3. Esporre in GraphQL campi GEDCOM aggiuntivi gia' importati (`occupations`, `titles`, `associations`).
 4. Valutare editing di persone/famiglie; al momento l'input di creazione individuo e' stato rimosso dalla home.
 5. Eventuale commit/push delle modifiche locali residue dopo aver controllato `git status`.
@@ -80,4 +82,5 @@ Known gaps / next steps:
 Working assumptions for the next session:
 - Usare approccio client-side per l'albero espandibile.
 - Trattare `Person` come nodo centrale della vista ad albero; le famiglie spouse vivono dentro la card persona.
+- Mostrare i controlli dei genitori nell'albero solo quando il nodo e' nel contesto corretto (radice, antenati, coniugi), non sui figli caricati da espansione discendente.
 - Evitare di reintrodurre `gene.ged` nel repository.
