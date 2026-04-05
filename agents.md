@@ -16,6 +16,7 @@ Current stack:
 - Framework: Next.js 16 (`pages` router)
 - API: GraphQL Yoga su `/api/graphql`
 - Frontend: React 19
+- Auth: Auth.js per Next.js (`next-auth`) con Google OAuth
 - Graph/tree view: React Flow
 - DB: MongoDB + Mongoose
 - Import: script `scripts/importGedcom.js`
@@ -23,9 +24,11 @@ Current stack:
 Implemented features:
 - Ricerca individui nella home (`pages/index.js`); se la casella di ricerca e' vuota non mostra risultati.
 - Formattazione nomi GEDCOM lato UI: `Nome /Cognome/` viene reso senza slash, con cognome in evidenza e metadati inline (sesso, nascita, morte).
+- Autenticazione Google con sessione applicativa e persistenza utenti in MongoDB.
 - Pagina dettaglio individuo (`pages/person/[id].js`) semplificata: famiglie in colonna, senza GEDCOM id visibili, con accesso alla vista albero tramite icona `🌳` nell'angolo alto destro.
 - Pagina albero persona (`pages/tree/person/[id].js`) con vista client-side basata su React Flow, nodi persona cliccabili e controlli `Expand` inline per genitori e famiglie.
 - Vista albero con connettori spouse-family corretti: aggancio laterale coerente, archi diretti verso il nodo famiglia, figli espansi senza pannello genitori, coniugi con pannello genitori disponibile.
+- Mutation GraphQL di scrittura protetta da sessione autenticata (`addPerson`).
 - Import GEDCOM rigoroso con:
   - parsing di `INDI` e `FAM`
   - export intermedio JSON in `data/gedcom.json`
@@ -66,7 +69,11 @@ Development & run
   - `/graphql/schema.js` — schema e resolver GraphQL
   - `/models/Person.js` — modello persona
   - `/models/Family.js` — modello famiglia
+  - `/models/User.js` — modello utente autenticato
+  - `/lib/auth.js` — configurazione Auth.js / Google OAuth
   - `/pages/index.js` — ricerca individui
+  - `/pages/_app.js` — bootstrap session provider client-side
+  - `/pages/api/auth/[...nextauth].js` — endpoint auth Google
   - `/pages/person/[id].js` — dettaglio individuo
   - `/pages/tree/person/[id].js` — vista albero persona con React Flow
   - `/scripts/importGedcom.js` — import GEDCOM

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import AuthStatus from '../../components/AuthStatus';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../lib/personName';
 
 const personTreeLinkStyle = {
@@ -143,6 +144,9 @@ export default function PersonPage() {
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
             ← Back to all persons
           </Link>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <AuthStatus />
         </div>
 
         {loading ? <div>Loading person...</div> : null}

@@ -6,7 +6,21 @@ Quick start
 
 1. Copy `.env.example` to `.env.local` and set `MONGODB_URI`.
 
-2. Install and run:
+2. For Google authentication, also configure:
+
+```bash
+AUTH_SECRET=replace-with-a-long-random-string
+AUTH_GOOGLE_ID=your-google-oauth-client-id
+AUTH_GOOGLE_SECRET=your-google-oauth-client-secret
+```
+
+	In Google Cloud Console, add this authorized redirect URI:
+
+```bash
+http://localhost:3000/api/auth/callback/google
+```
+
+3. Install and run:
 
 ```bash
 npm install
@@ -63,3 +77,5 @@ If `MONGODB_URI` is not configured, the script still generates `data/gedcom.json
 Notes
 - API endpoint: `POST /api/graphql`
 - The project contains a simple `Person` model and GraphQL queries/mutations to list and create persons.
+- Google authentication is handled with Auth.js for Next.js (`next-auth`) and persists signed-in users in MongoDB.
+- The `addPerson` GraphQL mutation now requires an authenticated session.

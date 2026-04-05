@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import ReactFlow, { Background, Controls, Handle, MiniMap, Position } from 'reactflow';
 import 'reactflow/dist/style.css';
+import AuthStatus from '../../../components/AuthStatus';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../../lib/personName';
 
 const elk = new ELK();
@@ -634,6 +635,9 @@ export default function PersonTreePage() {
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>← Back to search</Link>
           <div style={{ color: '#6d5a48' }}>Interactive person-centered tree. Expand parents or descendants from each person card.</div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <AuthStatus />
         </div>
 
         {loading ? <div>Loading tree...</div> : null}

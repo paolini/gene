@@ -1,5 +1,7 @@
 const { createYoga, createSchema } = require('graphql-yoga');
+const { getServerSession } = require('next-auth/next');
 const { typeDefs, resolvers } = require('../../graphql/schema');
+const { authOptions } = require('../../lib/auth');
 const { connect } = require('../../lib/mongodb');
 
 let yoga;
@@ -10,6 +12,9 @@ async function getYoga() {
     yoga = createYoga({
       schema: createSchema({ typeDefs, resolvers }),
       graphqlEndpoint: '/api/graphql',
+      context: async ({ req, res }) => ({
+        session: await getServerSession(req, res, authOptions)
+      }),
       fetchAPI: { Response }
     });
   }

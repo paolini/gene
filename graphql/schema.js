@@ -1,5 +1,6 @@
 const Person = require('../models/Person');
 const Family = require('../models/Family');
+const User = require('../models/User');
 
 function resolveId(document) {
   if (!document) {
@@ -52,11 +53,20 @@ const typeDefs = /* GraphQL */ `
     notes: [String]
   }
 
+  type AuthUser {
+    id: ID!
+    name: String
+    email: String
+    image: String
+    role: String
+  }
+
   type Query {
     persons: [Person]
     person(id: ID!): Person
     families: [Family]
     family(id: ID!): Family
+    currentUser: AuthUser
   }
 
   input PersonInput {
@@ -103,10 +113,21 @@ const resolvers = {
     persons: async () => Person.find().sort({ createdAt: -1 }).lean(),
     person: async (_, { id }) => Person.findById(id).lean(),
     families: async () => Family.find().sort({ createdAt: -1 }).lean(),
-    family: async (_, { id }) => Family.findById(id).lean()
+    family: async (_, { id }) => Family.findById(id).lean(),
+    currentUser: async (_, __, context) => {
+      if (!context?.session?.user?.email) {
+        return null;
+      }
+
+      return User.findOne({ email: context.session.user.email }).lean();
+    }
   },
   Mutation: {
-    addPerson: async (_, { input }) => {
+    addPerson: async (_, { input }, context) => {
+      if (!context?.session?.user?.email) {
+        throw new Error('Authentication required');
+      }
+
       const p = await Person.create(input);
       return p.toObject();
     }

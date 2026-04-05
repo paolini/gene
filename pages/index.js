@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import AuthStatus from '../components/AuthStatus';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../lib/personName';
 
 const query = `
@@ -76,6 +77,9 @@ export default function Home() {
         <p style={{ marginTop: 0, marginBottom: 24, color: '#6a5948' }}>
           Persons, spouse families, and origin families loaded from GEDCOM.
         </p>
+        <div style={{ marginBottom: 16 }}>
+          <AuthStatus />
+        </div>
         <div style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             value={searchTerm}
