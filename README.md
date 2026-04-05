@@ -81,3 +81,24 @@ Notes
 - Genealogical data is private: unauthenticated users are redirected to sign-in pages and GraphQL genealogy queries require an authenticated session.
 - Authentication alone is not sufficient: users must also have an explicit role (`guest`, `editor`, or `admin`) to access genealogy data.
 - The `addPerson` GraphQL mutation now requires an authenticated session.
+
+Docker deployment
+
+Build the image:
+
+```bash
+docker build -t gene-tree .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 3000:3000 \
+	-e MONGODB_URI=mongodb://host.docker.internal:27017/gene \
+	-e AUTH_SECRET=replace-with-a-long-random-string \
+	-e AUTH_GOOGLE_ID=your-google-oauth-client-id \
+	-e AUTH_GOOGLE_SECRET=your-google-oauth-client-secret \
+	gene-tree
+```
+
+If deploying behind a public URL, also set `NEXTAUTH_URL` to the external base URL of the app.

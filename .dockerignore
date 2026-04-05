@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.env.local
+data/gedcom.json
+gene.ged
+npm-debug.log
+Dockerfile
+README.md
