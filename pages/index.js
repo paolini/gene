@@ -116,6 +116,9 @@ export default function Home() {
                               ? `Children: ${family.children.map((child) => child.name || child.id).join(', ')}`
                               : 'No children listed'}
                           </div>
+                          <div style={{ marginTop: 4 }}>
+                            <span style={{ fontSize: 12, color: '#365f48' }}>Open from person page for tree view</span>
+                          </div>
                         </li>
                       ))}
                     </ul>
