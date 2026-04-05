@@ -102,7 +102,6 @@ export default function Home() {
                     {renderPersonName(p.name, 'Unnamed person')}
                     {renderPersonLifeDates(p)}
                   </h2>
-                  <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>{p.gedId}</div>
                 </header>
 
                 <section style={{ marginBottom: 12 }}>

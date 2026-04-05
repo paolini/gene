@@ -98,14 +98,21 @@ function PersonNode({ data }) {
       {data.hasRightHandle ? <Handle type="source" position={Position.Right} id="right" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
 
       <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: showParents || families.length ? 10 : 4 }}>
-        {renderPersonSex(person)}
-        {renderPersonName(person?.name, person?.gedId || 'Unknown person')}
-        {renderPersonLifeDates(person)}
+        <Link href={`/person/${person.id}`} style={{ color: '#2f2419', textDecoration: 'none' }}>
+          {renderPersonSex(person)}
+          {renderPersonName(person?.name, person?.gedId || 'Unknown person')}
+          {renderPersonLifeDates(person)}
+        </Link>
       </div>
 
       {showParents ? (
         <div style={{ marginBottom: families.length ? 10 : 0 }}>
-          <strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Parents</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <strong style={{ display: 'block', fontSize: 12 }}>Parents</strong>
+            <button onClick={() => data.onExpandParents(person)} style={{ padding: '3px 7px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 10 }}>
+              Expand
+            </button>
+          </div>
           <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
             {[parentFamily.husband, parentFamily.wife].filter(Boolean).length > 0
               ? [parentFamily.husband, parentFamily.wife].filter(Boolean).map((parent, index) => (
@@ -116,9 +123,6 @@ function PersonNode({ data }) {
                 ))
               : parentFamily.gedId}
           </div>
-          <button onClick={() => data.onExpandParents(person)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 11 }}>
-            Show parents
-          </button>
         </div>
       ) : null}
 
@@ -126,22 +130,18 @@ function PersonNode({ data }) {
         <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}>
           {families.map((family) => (
             <div key={family.id}>
-              <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
-                Family with <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{renderPersonName(spouseOf(family, person.id)?.name, spouseOf(family, person.id)?.gedId || 'Unknown person')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 11, color: '#6d5a48', lineHeight: 1.35, flexWrap: 'wrap' }}>
+                <span>
+                  Family with <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{renderPersonName(spouseOf(family, person.id)?.name, spouseOf(family, person.id)?.gedId || 'Unknown person')}</span>
+                </span>
+                <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '3px 7px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 10 }}>
+                  Expand
+                </button>
               </div>
-              <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 11 }}>
-                Show family
-              </button>
             </div>
           ))}
         </div>
       ) : null}
-
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 11 }}>
-          Open detail
-        </Link>
-      </div>
     </div>
   );
 }
@@ -251,7 +251,7 @@ function buildGraphModel(personMap, expandedParentFamilyIds, expandedDescFamilyI
         sourceHandle: 'right',
         target: connectorId,
         targetHandle: 'left',
-        type: 'smoothstep',
+        type: 'straight',
         style: { stroke: '#9a6f4a', strokeWidth: 2 }
       });
     }
@@ -267,7 +267,7 @@ function buildGraphModel(personMap, expandedParentFamilyIds, expandedDescFamilyI
         sourceHandle: 'left',
         target: connectorId,
         targetHandle: 'right',
-        type: 'smoothstep',
+        type: 'straight',
         style: { stroke: '#9a6f4a', strokeWidth: 2 }
       });
     }
@@ -358,8 +358,9 @@ function resolveRenderedEdges(edges, positionedNodes) {
 
     const sourceCenterX = sourceNode.x + (sourceNode.width || 0) / 2;
     const targetCenterX = targetNode.x + (targetNode.width || 0) / 2;
-    const sourceHandle = sourceCenterX <= targetCenterX ? 'right' : 'left';
-    const targetHandle = sourceCenterX <= targetCenterX ? 'right' : 'left';
+    const sourceIsLeftOfTarget = sourceCenterX <= targetCenterX;
+    const sourceHandle = sourceIsLeftOfTarget ? 'right' : 'left';
+    const targetHandle = sourceIsLeftOfTarget ? 'left' : 'right';
 
     return {
       ...edge,
