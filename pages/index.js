@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../lib/personName';
 
 const query = `
   query {
@@ -35,7 +36,7 @@ function familyLabel(family, personId) {
 
   const spouse = [family.husband, family.wife].find((candidate) => candidate && candidate.id !== personId);
   if (spouse) {
-    return spouse.name || family.gedId;
+    return formatPersonNameText(spouse.name, family.gedId);
   }
 
   return family.gedId || 'Unnamed family';
@@ -60,7 +61,7 @@ export default function Home() {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredPersons = normalizedSearch
     ? persons.filter((person) => {
-        const haystack = [person.name, person.gedId, person.birthDate, person.deathDate]
+        const haystack = [formatPersonNameText(person.name, ''), person.gedId, person.birthDate, person.deathDate]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -96,12 +97,12 @@ export default function Home() {
             <Link key={p.id} href={`/person/${p.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <article style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', height: '100%' }}>
                 <header style={{ marginBottom: 12 }}>
-                  <h2 style={{ margin: 0, fontSize: 22 }}>{p.name || 'Unnamed person'}</h2>
-                  <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>{p.gedId} {p.sex ? `• ${p.sex}` : ''}</div>
-                  <div style={{ fontSize: 14, color: '#5b4938', marginTop: 6 }}>
-                    {p.birthDate ? `Born: ${p.birthDate}` : 'Birth date unknown'}
-                    {p.deathDate ? ` • Died: ${p.deathDate}` : ''}
-                  </div>
+                  <h2 style={{ margin: 0, fontSize: 22 }}>
+                    {renderPersonSex(p)}
+                    {renderPersonName(p.name, 'Unnamed person')}
+                    {renderPersonLifeDates(p)}
+                  </h2>
+                  <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>{p.gedId}</div>
                 </header>
 
                 <section style={{ marginBottom: 12 }}>
@@ -112,9 +113,17 @@ export default function Home() {
                         <li key={family.id} style={{ marginBottom: 6 }}>
                           <div>{familyLabel(family, p.id)}</div>
                           <div style={{ fontSize: 13, color: '#7b6a59' }}>
-                            {family.children && family.children.length > 0
-                              ? `Children: ${family.children.map((child) => child.name || child.id).join(', ')}`
-                              : 'No children listed'}
+                            {family.children && family.children.length > 0 ? (
+                              <>
+                                Children:{' '}
+                                {family.children.map((child, index) => (
+                                  <span key={child.id || `${child.name}-${index}`}>
+                                    {index > 0 ? ', ' : ''}
+                                    {renderPersonName(child.name, child.id)}
+                                  </span>
+                                ))}
+                              </>
+                            ) : 'No children listed'}
                           </div>
                           <div style={{ marginTop: 4 }}>
                             <span style={{ fontSize: 12, color: '#365f48' }}>Open from person page for tree view</span>
@@ -134,13 +143,28 @@ export default function Home() {
                       {p.famc.map((family) => (
                         <li key={family.id} style={{ marginBottom: 6 }}>
                           <div>
-                            Parents: {[family.husband?.name, family.wife?.name].filter(Boolean).join(' and ') || family.gedId}
+                            Parents:{' '}
+                            {[family.husband, family.wife].filter(Boolean).length > 0
+                              ? [family.husband, family.wife].filter(Boolean).map((parent, index) => (
+                                  <span key={parent.id || `${parent.name}-${index}`}>
+                                    {index > 0 ? ' and ' : ''}
+                                    {renderPersonName(parent.name, parent.id)}
+                                  </span>
+                                ))
+                              : family.gedId}
                           </div>
                           <div style={{ fontSize: 13, color: '#7b6a59' }}>
-                            Siblings: {(family.children || [])
-                              .filter((child) => child.id !== p.id)
-                              .map((child) => child.name || child.id)
-                              .join(', ') || 'No siblings listed'}
+                            Siblings:{' '}
+                            {(family.children || []).filter((child) => child.id !== p.id).length > 0
+                              ? (family.children || [])
+                                  .filter((child) => child.id !== p.id)
+                                  .map((child, index) => (
+                                    <span key={child.id || `${child.name}-${index}`}>
+                                      {index > 0 ? ', ' : ''}
+                                      {renderPersonName(child.name, child.id)}
+                                    </span>
+                                  ))
+                              : 'No siblings listed'}
                           </div>
                         </li>
                       ))}

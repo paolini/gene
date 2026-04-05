@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import ReactFlow, { Background, Controls, Handle, MiniMap, Position } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../../lib/personName';
 
 const elk = new ELK();
 const NODE_WIDTH = 250;
@@ -76,7 +77,7 @@ const personTreeQuery = `
 `;
 
 function personName(person) {
-  return person?.name || person?.gedId || 'Unknown person';
+  return formatPersonNameText(person?.name, person?.gedId || 'Unknown person');
 }
 
 function spouseOf(family, personId) {
@@ -96,20 +97,24 @@ function PersonNode({ data }) {
       {data.hasLeftHandle ? <Handle type="source" position={Position.Left} id="left" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
       {data.hasRightHandle ? <Handle type="source" position={Position.Right} id="right" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
 
-      <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>{personName(person)}</div>
-      <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 10 }}>
-        {person.sex || 'Unknown sex'}
-      </div>
-      <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: showParents || families.length ? 10 : 0, lineHeight: 1.35 }}>
-        {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
-        {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
+      <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: showParents || families.length ? 10 : 4 }}>
+        {renderPersonSex(person)}
+        {renderPersonName(person?.name, person?.gedId || 'Unknown person')}
+        {renderPersonLifeDates(person)}
       </div>
 
       {showParents ? (
         <div style={{ marginBottom: families.length ? 10 : 0 }}>
           <strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Parents</strong>
           <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
-            {[parentFamily.husband?.name, parentFamily.wife?.name].filter(Boolean).join(' and ') || parentFamily.gedId}
+            {[parentFamily.husband, parentFamily.wife].filter(Boolean).length > 0
+              ? [parentFamily.husband, parentFamily.wife].filter(Boolean).map((parent, index) => (
+                  <span key={parent.id || `${parent.name}-${index}`}>
+                    {index > 0 ? ' and ' : ''}
+                    {renderPersonName(parent.name, parent.id)}
+                  </span>
+                ))
+              : parentFamily.gedId}
           </div>
           <button onClick={() => data.onExpandParents(person)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 11 }}>
             Show parents
@@ -122,7 +127,7 @@ function PersonNode({ data }) {
           {families.map((family) => (
             <div key={family.id}>
               <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
-                Family with <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{personName(spouseOf(family, person.id))}</span>
+                Family with <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{renderPersonName(spouseOf(family, person.id)?.name, spouseOf(family, person.id)?.gedId || 'Unknown person')}</span>
               </div>
               <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 11 }}>
                 Show family

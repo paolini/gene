@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../lib/personName';
 
 const personQuery = `
   query Person($id: ID!) {
@@ -31,12 +32,12 @@ const personQuery = `
 
 function PersonLink({ person }) {
   if (!person?.id) {
-    return person?.name || 'Unknown person';
+    return renderPersonName(person?.name, 'Unknown person');
   }
 
   return (
     <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-      {person.name || person.id}
+      {renderPersonName(person.name, person.id)}
     </Link>
   );
 }
@@ -75,7 +76,7 @@ function familyLabel(family, personId) {
 
   const spouse = [family.husband, family.wife].find((candidate) => candidate && candidate.id !== personId);
 
-  return spouse?.name || family.gedId || 'Unnamed family';
+  return formatPersonNameText(spouse?.name, family.gedId || 'Unnamed family');
 }
 
 export default function PersonPage() {
@@ -139,12 +140,12 @@ export default function PersonPage() {
         {person ? (
           <article style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 20, padding: 24, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)' }}>
             <header style={{ marginBottom: 20 }}>
-              <h1 style={{ margin: 0, fontSize: 34 }}>{person.name || 'Unnamed person'}</h1>
-              <div style={{ fontSize: 14, color: '#7b6a59', marginTop: 6 }}>{person.gedId} {person.sex ? `• ${person.sex}` : ''}</div>
-              <div style={{ fontSize: 16, color: '#5b4938', marginTop: 10 }}>
-                {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
-                {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
-              </div>
+              <h1 style={{ margin: 0, fontSize: 34 }}>
+                {renderPersonSex(person)}
+                {renderPersonName(person.name, 'Unnamed person')}
+                {renderPersonLifeDates(person)}
+              </h1>
+              <div style={{ fontSize: 14, color: '#7b6a59', marginTop: 6 }}>{person.gedId}</div>
               <div style={{ marginTop: 12 }}>
                 <Link href={`/tree/person/${person.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 14 }}>
                   Open interactive person tree
