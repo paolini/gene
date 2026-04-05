@@ -8,6 +8,19 @@ function requireAuthenticatedUser(context) {
   }
 }
 
+function requireAuthorizedRole(context, allowedRoles) {
+  requireAuthenticatedUser(context);
+
+  const role = context?.session?.user?.role;
+  if (!role) {
+    throw new Error('Role required');
+  }
+
+  if (!allowedRoles.includes(role)) {
+    throw new Error('Insufficient permissions');
+  }
+}
+
 function resolveId(document) {
   if (!document) {
     return null;
@@ -117,19 +130,19 @@ const resolvers = {
   },
   Query: {
     persons: async (_, __, context) => {
-      requireAuthenticatedUser(context);
+      requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
       return Person.find().sort({ createdAt: -1 }).lean();
     },
     person: async (_, { id }, context) => {
-      requireAuthenticatedUser(context);
+      requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
       return Person.findById(id).lean();
     },
     families: async (_, __, context) => {
-      requireAuthenticatedUser(context);
+      requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
       return Family.find().sort({ createdAt: -1 }).lean();
     },
     family: async (_, { id }, context) => {
-      requireAuthenticatedUser(context);
+      requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
       return Family.findById(id).lean();
     },
     currentUser: async (_, __, context) => {
@@ -142,7 +155,7 @@ const resolvers = {
   },
   Mutation: {
     addPerson: async (_, { input }, context) => {
-      requireAuthenticatedUser(context);
+      requireAuthorizedRole(context, ['editor', 'admin']);
 
       const p = await Person.create(input);
       return p.toObject();

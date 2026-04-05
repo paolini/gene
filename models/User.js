@@ -4,7 +4,7 @@ const UserSchema = new mongoose.Schema({
   name: String,
   email: { type: String, required: true, unique: true, index: true },
   image: String,
-  role: { type: String, default: 'editor' },
+  role: { type: String, enum: ['guest', 'editor', 'admin'], default: null },
   provider: { type: String, default: 'google' },
   providerAccountId: { type: String, index: true },
   emailVerified: { type: Boolean, default: false },

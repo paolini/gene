@@ -193,5 +193,14 @@ export async function getServerSideProps(context) {
     };
   }
 
+  if (!session.user?.role) {
+    return {
+      redirect: {
+        destination: '/auth/pending',
+        permanent: false
+      }
+    };
+  }
+
   return { props: {} };
 }

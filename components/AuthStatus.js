@@ -35,6 +35,9 @@ export default function AuthStatus() {
       <div style={{ fontSize: 13, color: '#7b6a59' }}>
         Signed in as {session.user.name || session.user.email}
       </div>
+      <div style={{ fontSize: 13, color: '#7b6a59' }}>
+        Role: {session.user.role || 'pending'}
+      </div>
       <button type="button" onClick={() => signOut()} style={buttonStyle}>
         Sign out
       </button>

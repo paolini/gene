@@ -25,10 +25,11 @@ Implemented features:
 - Ricerca individui nella home (`pages/index.js`); se la casella di ricerca e' vuota non mostra risultati.
 - Formattazione nomi GEDCOM lato UI: `Nome /Cognome/` viene reso senza slash, con cognome in evidenza e metadati inline (sesso, nascita, morte).
 - Autenticazione Google con sessione applicativa e persistenza utenti in MongoDB.
+- Accesso ai dati genealogici consentito solo a utenti autenticati con ruolo esplicito (`guest`, `editor`, `admin`); utenti senza ruolo vengono indirizzati a una pagina di attesa autorizzazione.
 - Pagina dettaglio individuo (`pages/person/[id].js`) semplificata: famiglie in colonna, senza GEDCOM id visibili, con accesso alla vista albero tramite icona `🌳` nell'angolo alto destro.
 - Pagina albero persona (`pages/tree/person/[id].js`) con vista client-side basata su React Flow, nodi persona cliccabili e controlli `Expand` inline per genitori e famiglie.
 - Vista albero con connettori spouse-family corretti: aggancio laterale coerente, archi diretti verso il nodo famiglia, figli espansi senza pannello genitori, coniugi con pannello genitori disponibile.
-- Mutation GraphQL di scrittura protetta da sessione autenticata (`addPerson`).
+- Mutation GraphQL di scrittura protetta da ruolo esplicito (`editor` o `admin` per `addPerson`).
 - Import GEDCOM rigoroso con:
   - parsing di `INDI` e `FAM`
   - export intermedio JSON in `data/gedcom.json`
@@ -54,8 +55,9 @@ Agent roles and responsibilities
 - `sync-agent` (optional): gestisce WebSocket e conflitti semplici (last-write-wins o CRDT).
 
 Security & auth
-- Implementare autenticazione minima (sessione o token) per operazioni di scrittura.
-- Considerare ruoli: reader/editor/admin.
+- I dati genealogici sono privati: utenti non autenticati non devono poter accedere ne' via UI ne' via GraphQL.
+- L'autenticazione da sola non basta: ogni utente deve avere un ruolo esplicito (`guest`, `editor`, `admin`).
+- `guest` puo' leggere; `editor` puo' leggere e scrivere; `admin` puo' gestire anche i ruoli utente.
 
 Import/Export
 - Supporto nativo per importazione GEDCOM; logging delle discrepanze e report di mapping.
@@ -82,9 +84,9 @@ Development & run
 Known gaps / next steps:
 1. Migliorare il layout automatico del grafo React Flow person-centered; attualmente il posizionamento e' semplice.
 2. Valutare un indicatore visivo migliore per distinguere i nodi caricati per ascendenza rispetto a quelli caricati da una espansione discendente.
-3. Esporre in GraphQL campi GEDCOM aggiuntivi gia' importati (`occupations`, `titles`, `associations`).
-4. Valutare editing di persone/famiglie; al momento l'input di creazione individuo e' stato rimosso dalla home.
-5. Eventuale commit/push delle modifiche locali residue dopo aver controllato `git status`.
+3. Aggiungere strumenti admin per assegnare e modificare i ruoli utente dall'applicazione.
+4. Esporre in GraphQL campi GEDCOM aggiuntivi gia' importati (`occupations`, `titles`, `associations`).
+5. Valutare editing di persone/famiglie; al momento l'input di creazione individuo e' stato rimosso dalla home.
 
 Working assumptions for the next session:
 - Usare approccio client-side per l'albero espandibile.
