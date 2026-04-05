@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 const query = `
@@ -42,7 +43,7 @@ function familyLabel(family, personId) {
 
 export default function Home() {
   const [persons, setPersons] = useState([]);
-  const [name, setName] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   async function fetchPersons() {
     const res = await fetch('/api/graphql', {
@@ -56,18 +57,16 @@ export default function Home() {
 
   useEffect(() => { fetchPersons(); }, []);
 
-  async function addPerson(e) {
-    e.preventDefault();
-    const mutation = `mutation Add($input: PersonInput!) { addPerson(input: $input) { id name } }`;
-    const res = await fetch('/api/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: mutation, variables: { input: { name } } })
-    });
-    await res.json();
-    setName('');
-    fetchPersons();
-  }
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredPersons = normalizedSearch
+    ? persons.filter((person) => {
+        const haystack = [person.name, person.gedId, person.birthDate, person.deathDate]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(normalizedSearch);
+      })
+    : [];
 
   return (
     <div style={{ padding: 24, fontFamily: 'Georgia, serif', background: 'linear-gradient(180deg, #f5efe2 0%, #fbf8f1 100%)', minHeight: '100vh', color: '#2f2419' }}>
@@ -76,72 +75,79 @@ export default function Home() {
         <p style={{ marginTop: 0, marginBottom: 24, color: '#6a5948' }}>
           Persons, spouse families, and origin families loaded from GEDCOM.
         </p>
-        <form onSubmit={addPerson} style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Name"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search by name, GEDCOM id, or date"
             style={{ padding: '10px 12px', minWidth: 240, border: '1px solid #c9b79f', borderRadius: 8, background: '#fffdf8' }}
           />
-          <button type="submit" style={{ padding: '10px 14px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer' }}>
-            Add person
-          </button>
-        </form>
+          <div style={{ fontSize: 14, color: '#6a5948' }}>
+            Showing {filteredPersons.length} of {persons.length}
+          </div>
+        </div>
+        {!normalizedSearch ? (
+          <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#fffaf2', border: '1px solid #e2d5c3', color: '#6a5948' }}>
+            Enter a search term to view matching individuals.
+          </div>
+        ) : null}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {persons.map((p) => (
-            <article key={p.id} style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)' }}>
-              <header style={{ marginBottom: 12 }}>
-                <h2 style={{ margin: 0, fontSize: 22 }}>{p.name || 'Unnamed person'}</h2>
-                <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>{p.gedId} {p.sex ? `• ${p.sex}` : ''}</div>
-                <div style={{ fontSize: 14, color: '#5b4938', marginTop: 6 }}>
-                  {p.birthDate ? `Born: ${p.birthDate}` : 'Birth date unknown'}
-                  {p.deathDate ? ` • Died: ${p.deathDate}` : ''}
-                </div>
-              </header>
+          {filteredPersons.map((p) => (
+            <Link key={p.id} href={`/person/${p.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+              <article style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', height: '100%' }}>
+                <header style={{ marginBottom: 12 }}>
+                  <h2 style={{ margin: 0, fontSize: 22 }}>{p.name || 'Unnamed person'}</h2>
+                  <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>{p.gedId} {p.sex ? `• ${p.sex}` : ''}</div>
+                  <div style={{ fontSize: 14, color: '#5b4938', marginTop: 6 }}>
+                    {p.birthDate ? `Born: ${p.birthDate}` : 'Birth date unknown'}
+                    {p.deathDate ? ` • Died: ${p.deathDate}` : ''}
+                  </div>
+                </header>
 
-              <section style={{ marginBottom: 12 }}>
-                <strong style={{ display: 'block', marginBottom: 6 }}>Spouse families</strong>
-                {p.fams && p.fams.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {p.fams.map((family) => (
-                      <li key={family.id} style={{ marginBottom: 6 }}>
-                        <div>{familyLabel(family, p.id)}</div>
-                        <div style={{ fontSize: 13, color: '#7b6a59' }}>
-                          {family.children && family.children.length > 0
-                            ? `Children: ${family.children.map((child) => child.name || child.id).join(', ')}`
-                            : 'No children listed'}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div style={{ color: '#7b6a59' }}>No spouse families</div>
-                )}
-              </section>
+                <section style={{ marginBottom: 12 }}>
+                  <strong style={{ display: 'block', marginBottom: 6 }}>Spouse families</strong>
+                  {p.fams && p.fams.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {p.fams.map((family) => (
+                        <li key={family.id} style={{ marginBottom: 6 }}>
+                          <div>{familyLabel(family, p.id)}</div>
+                          <div style={{ fontSize: 13, color: '#7b6a59' }}>
+                            {family.children && family.children.length > 0
+                              ? `Children: ${family.children.map((child) => child.name || child.id).join(', ')}`
+                              : 'No children listed'}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ color: '#7b6a59' }}>No spouse families</div>
+                  )}
+                </section>
 
-              <section>
-                <strong style={{ display: 'block', marginBottom: 6 }}>Family of origin</strong>
-                {p.famc && p.famc.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {p.famc.map((family) => (
-                      <li key={family.id} style={{ marginBottom: 6 }}>
-                        <div>
-                          Parents: {[family.husband?.name, family.wife?.name].filter(Boolean).join(' and ') || family.gedId}
-                        </div>
-                        <div style={{ fontSize: 13, color: '#7b6a59' }}>
-                          Siblings: {(family.children || [])
-                            .filter((child) => child.id !== p.id)
-                            .map((child) => child.name || child.id)
-                            .join(', ') || 'No siblings listed'}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div style={{ color: '#7b6a59' }}>No origin family</div>
-                )}
-              </section>
-            </article>
+                <section>
+                  <strong style={{ display: 'block', marginBottom: 6 }}>Family of origin</strong>
+                  {p.famc && p.famc.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {p.famc.map((family) => (
+                        <li key={family.id} style={{ marginBottom: 6 }}>
+                          <div>
+                            Parents: {[family.husband?.name, family.wife?.name].filter(Boolean).join(' and ') || family.gedId}
+                          </div>
+                          <div style={{ fontSize: 13, color: '#7b6a59' }}>
+                            Siblings: {(family.children || [])
+                              .filter((child) => child.id !== p.id)
+                              .map((child) => child.name || child.id)
+                              .join(', ') || 'No siblings listed'}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ color: '#7b6a59' }}>No origin family</div>
+                  )}
+                </section>
+              </article>
+            </Link>
           ))}
         </div>
       </div>
