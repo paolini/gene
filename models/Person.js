@@ -6,8 +6,8 @@ const PersonSchema = new mongoose.Schema({
   sex: String,
   birthDate: String,
   deathDate: String,
-  fams: [String],
-  famc: [String]
+  fams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Family' }],
+  famc: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Family' }]
 }, { timestamps: true });
 
 module.exports = mongoose.models.Person || mongoose.model('Person', PersonSchema);

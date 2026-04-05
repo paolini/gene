@@ -5,8 +5,8 @@ const FamilySchema = new mongoose.Schema({
   husband: { type: mongoose.Schema.Types.ObjectId, ref: 'Person', default: null },
   wife: { type: mongoose.Schema.Types.ObjectId, ref: 'Person', default: null },
   children: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Person' }],
-  events: [{ type: Object }],
-  notes: String,
+  events: { type: Object, default: {} },
+  notes: [{ type: String }],
   raw: Object
 }, { timestamps: true });
 
