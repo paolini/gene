@@ -51,12 +51,12 @@ const googleBadgeStyle = {
   boxShadow: 'inset 0 0 0 2px rgba(255, 255, 255, 0.85)'
 };
 
-export default function SignInPage({ providers, callbackUrl, googleAuthConfigured: isConfigured }) {
+export default function SignInPage({ providers, callbackUrl, googleAuthConfigured: isConfigured, error }) {
   return (
     <div style={pageStyle}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-          ← Back to Gene Tree
+          ← Back
         </Link>
 
         <div style={cardStyle}>
@@ -67,6 +67,12 @@ export default function SignInPage({ providers, callbackUrl, googleAuthConfigure
           <p style={{ margin: '0 0 24px', color: '#6d5a48', lineHeight: 1.5 }}>
             Use your Google account to unlock authenticated actions like editing or adding people.
           </p>
+
+          {error === 'InvalidInvite' ? (
+            <div style={{ borderRadius: 16, background: '#fff1e8', color: '#7a4b2a', padding: 16, border: '1px solid #ebd1bf', lineHeight: 1.5, marginBottom: 16 }}>
+              This invitation link is invalid or has already been used.
+            </div>
+          ) : null}
 
           {isConfigured ? (
             <div style={{ display: 'grid', gap: 12 }}>
@@ -95,6 +101,7 @@ export default function SignInPage({ providers, callbackUrl, googleAuthConfigure
 export async function getServerSideProps(context) {
   const session = await getSession(context);
   const callbackUrl = typeof context.query.callbackUrl === 'string' ? context.query.callbackUrl : '/';
+  const error = typeof context.query.error === 'string' ? context.query.error : '';
 
   if (session) {
     return {
@@ -111,7 +118,8 @@ export async function getServerSideProps(context) {
     props: {
       providers: providers || null,
       callbackUrl,
-      googleAuthConfigured
+      googleAuthConfigured,
+      error
     }
   };
 }

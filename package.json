@@ -1,12 +1,17 @@
 {
   "name": "gene-tree",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "import:ged": "node ./scripts/importGedcom.js"
+    "import:ged": "node ./scripts/importGedcom.js",
+    "invite:user": "node ./scripts/createUserInvitation.js",
+    "migrate:create": "migrate-mongo create",
+    "migrate:up": "migrate-mongo up",
+    "migrate:down": "migrate-mongo down",
+    "migrate:status": "migrate-mongo status"
   },
   "dependencies": {
     "dotenv": "17.2.3",
@@ -19,5 +24,8 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "reactflow": "11.11.4"
+  },
+  "devDependencies": {
+    "migrate-mongo": "^14.0.7"
   }
 }

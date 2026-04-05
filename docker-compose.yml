@@ -1,6 +1,13 @@
 # To import a GEDCOM file in production:
 # docker cp ./gene.ged gene-app:/tmp/gene.ged
 # docker compose exec app npm run import:ged -- /tmp/gene.ged
+# To apply pending database migrations in production:
+# docker compose exec app npm run migrate:up
+# To bootstrap a new admin invitation from the command line:
+# docker compose exec app npm run invite:user -- admin
+# To bootstrap a reusable admin invitation:
+# docker compose exec app npm run invite:user -- admin --reusable
+# Then open the printed /invite/<token> URL and sign in with Google.
 
 services:
   app:

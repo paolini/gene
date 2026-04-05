@@ -1,6 +1,12 @@
+const { GraphQLError } = require('graphql');
 const Person = require('../models/Person');
 const Family = require('../models/Family');
 const User = require('../models/User');
+const UserInvitation = require('../models/UserInvitation');
+
+function createInvitationToken() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
 
 function requireAuthenticatedUser(context) {
   if (!context?.session?.user?.email) {
@@ -47,6 +53,64 @@ function resolveId(document) {
   }
 
   return null;
+}
+
+function createClientSafeError(message, code) {
+  return new GraphQLError(message, {
+    extensions: { code }
+  });
+}
+
+async function redeemInvitationForUser(token, sessionUserEmail) {
+  const invitation = await UserInvitation.findOne({ token }).lean();
+
+  if (!invitation) {
+    throw createClientSafeError('Invitation not found', 'INVITATION_NOT_FOUND');
+  }
+
+  if (!invitation.isActive) {
+    throw createClientSafeError('Invitation is disabled', 'INVITATION_DISABLED');
+  }
+
+  if (!invitation.isReusable && invitation.usedAt) {
+    throw createClientSafeError('Invitation already used', 'INVITATION_ALREADY_USED');
+  }
+
+  const user = await User.findOne({ email: sessionUserEmail });
+  if (!user) {
+    throw createClientSafeError('Authenticated user not found', 'USER_NOT_FOUND');
+  }
+
+  if (user.role) {
+    throw createClientSafeError('This account already has a role', 'USER_ALREADY_HAS_ROLE');
+  }
+
+  user.role = invitation.role;
+  await user.save();
+
+  const usedAt = new Date();
+  const update = {
+    $set: {
+      lastUsedBy: user._id,
+      lastUsedAt: usedAt
+    },
+    $inc: {
+      redemptionCount: 1
+    }
+  };
+
+  if (!invitation.isReusable) {
+    update.$set.usedBy = user._id;
+    update.$set.usedAt = usedAt;
+  }
+
+  const updatedInvitation = await UserInvitation.findByIdAndUpdate(invitation._id, update, { new: true })
+    .populate('createdBy')
+    .populate('usedBy')
+    .populate('lastUsedBy')
+    .lean();
+
+  return updatedInvitation;
 }
 
 const typeDefs = /* GraphQL */ `
@@ -106,6 +170,23 @@ const typeDefs = /* GraphQL */ `
     updatedAt: String
   }
 
+  type UserInvitation {
+    id: ID!
+    token: String!
+    role: String!
+    isReusable: Boolean!
+    isActive: Boolean!
+    createdBy: AuthUser
+    usedBy: AuthUser
+    usedAt: String
+    lastUsedBy: AuthUser
+    lastUsedAt: String
+    redemptionCount: Int!
+    disabledAt: String
+    createdAt: String
+    updatedAt: String
+  }
+
   type Query {
     persons: [Person]
     person(id: ID!): Person
@@ -113,6 +194,7 @@ const typeDefs = /* GraphQL */ `
     family(id: ID!): Family
     currentUser: AuthUser
     users: [AuthUser]
+    userInvitations: [UserInvitation!]!
   }
 
   input PersonInput {
@@ -126,6 +208,9 @@ const typeDefs = /* GraphQL */ `
   type Mutation {
     addPerson(input: PersonInput!): Person
     setUserRole(userId: ID!, role: String): AuthUser
+    createUserInvitation(role: String!, isReusable: Boolean): UserInvitation!
+    setUserInvitationActive(invitationId: ID!, isActive: Boolean!): UserInvitation!
+    redeemUserInvitation(token: String!): UserInvitation!
   }
 `;
 
@@ -159,6 +244,9 @@ const resolvers = {
   AuthUser: {
     id: (parent) => resolveId(parent)
   },
+  UserInvitation: {
+    id: (parent) => resolveId(parent)
+  },
   Query: {
     persons: async (_, __, context) => {
       requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
@@ -186,6 +274,15 @@ const resolvers = {
     users: async (_, __, context) => {
       requireAuthorizedRole(context, ['admin']);
       return User.find().sort({ createdAt: 1, email: 1 }).lean();
+    },
+    userInvitations: async (_, __, context) => {
+      requireAuthorizedRole(context, ['admin']);
+
+      return UserInvitation.find()
+        .sort({ createdAt: -1 })
+        .populate('createdBy')
+        .populate('usedBy')
+        .lean();
     }
   },
   Mutation: {
@@ -210,6 +307,55 @@ const resolvers = {
       }
 
       return user;
+    },
+    createUserInvitation: async (_, { role, isReusable }, context) => {
+      requireAuthorizedRole(context, ['admin']);
+
+      const normalizedRole = normalizeRole(role);
+      if (!normalizedRole) {
+        throw new Error('Invalid role');
+      }
+
+      const invitation = await UserInvitation.create({
+        token: createInvitationToken(),
+        role: normalizedRole,
+        isReusable: Boolean(isReusable),
+        createdBy: context.session.user.id
+      });
+
+      return UserInvitation.findById(invitation._id)
+        .populate('createdBy')
+        .populate('usedBy')
+        .populate('lastUsedBy')
+        .lean();
+    },
+    setUserInvitationActive: async (_, { invitationId, isActive }, context) => {
+      requireAuthorizedRole(context, ['admin']);
+
+      const invitation = await UserInvitation.findByIdAndUpdate(
+        invitationId,
+        {
+          $set: {
+            isActive,
+            disabledAt: isActive ? null : new Date()
+          }
+        },
+        { new: true, runValidators: true }
+      )
+        .populate('createdBy')
+        .populate('usedBy')
+        .populate('lastUsedBy')
+        .lean();
+
+      if (!invitation) {
+        throw new Error('Invitation not found');
+      }
+
+      return invitation;
+    },
+    redeemUserInvitation: async (_, { token }, context) => {
+      requireAuthenticatedUser(context);
+      return redeemInvitationForUser(token, context.session.user.email);
     }
   }
 };

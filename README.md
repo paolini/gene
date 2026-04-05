@@ -93,7 +93,92 @@ Notes
 - Google authentication is handled with Auth.js for Next.js (`next-auth`) and persists signed-in users in MongoDB.
 - Genealogical data is private: unauthenticated users are redirected to sign-in pages and GraphQL genealogy queries require an authenticated session.
 - Authentication alone is not sufficient: users must also have an explicit role (`guest`, `editor`, or `admin`) to access genealogy data.
+- Admin users can generate one-time or reusable invitation links that assign a predefined role when redeemed, and can disable them later from the admin UI.
+- If no admin exists anymore, you can bootstrap a new invitation from the command line with `npm run invite:user -- admin`.
 - The `addPerson` GraphQL mutation now requires an authenticated session.
+
+Database migrations
+
+The repository uses `migrate-mongo` for explicit MongoDB migrations. The configuration lives in `migrate-mongo-config.js` and reads `.env.local` and `.env` to resolve `MONGODB_URI`.
+
+Create a new migration:
+
+```bash
+npm run migrate:create -- add-invitation-flags
+```
+
+Apply pending migrations:
+
+```bash
+npm run migrate:up
+```
+
+Rollback the last migration:
+
+```bash
+npm run migrate:down
+```
+
+Show migration status:
+
+```bash
+npm run migrate:status
+```
+
+Migration files are stored in the `migrations/` directory and tracked through the `migrations_changelog` collection in MongoDB.
+
+The repository already includes an initial migration to normalize legacy `UserInvitation` documents with the newer invitation fields.
+
+Invitation bootstrap from CLI
+
+The invite creation script reads `.env.local` and `.env`, connects to MongoDB, and prints an invitation URL.
+
+This is the recovery path when the `users` collection is empty, the previous admin was deleted, or no application admin can access the UI anymore.
+
+Create an admin invitation using the configured `NEXTAUTH_URL`:
+
+```bash
+npm run invite:user -- admin
+```
+
+Create an invitation for a different role:
+
+```bash
+npm run invite:user -- guest
+npm run invite:user -- editor
+```
+
+Create a reusable invitation link:
+
+```bash
+npm run invite:user -- admin --reusable
+```
+
+Override the base URL printed in the invitation link:
+
+```bash
+npm run invite:user -- --role admin --base-url https://gene.example.com
+```
+
+If you are running in Docker Compose, you can create the invitation inside the app container:
+
+```bash
+docker compose exec app npm run invite:user -- admin
+docker compose exec app npm run invite:user -- admin --reusable
+```
+
+Typical recovery flow:
+
+1. Generate an admin invitation from the shell.
+2. Open the printed URL in the browser.
+3. Sign in with Google using the account that should become admin.
+4. The role is assigned when the invitation page is redeemed.
+
+Invitation behavior:
+
+1. One-time links stop working after the first successful redemption.
+2. Reusable links can be redeemed any number of times by different pending accounts.
+3. Any invitation link can be disabled or re-enabled from the Manage users page.
 
 Docker deployment
 
@@ -112,6 +197,18 @@ docker run --rm -p 3000:3000 \
 	-e AUTH_GOOGLE_ID=your-google-oauth-client-id \
 	-e AUTH_GOOGLE_SECRET=your-google-oauth-client-secret \
 	gene-tree
+```
+
+Apply pending migrations in the running container before using the app after a deploy that changes database structure or data shape:
+
+```bash
+docker exec <container-name> npm run migrate:up
+```
+
+If you use Docker Compose, the equivalent command is:
+
+```bash
+docker compose exec app npm run migrate:up
 ```
 
 If deploying behind a public URL, also set `NEXTAUTH_URL` to the external base URL of the app.
