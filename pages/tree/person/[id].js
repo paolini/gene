@@ -21,6 +21,7 @@ const personTreeQuery = `
       sex
       birthDate
       deathDate
+      media { file isPrimary title }
       famc {
         id
         gedId
@@ -31,6 +32,7 @@ const personTreeQuery = `
           sex
           birthDate
           deathDate
+          media { file isPrimary title }
           famc { id gedId }
           fams {
             id
@@ -47,6 +49,7 @@ const personTreeQuery = `
           sex
           birthDate
           deathDate
+          media { file isPrimary title }
           famc { id gedId }
           fams {
             id
@@ -56,13 +59,13 @@ const personTreeQuery = `
             children { id name gedId }
           }
         }
-        children { id name gedId }
+        children { id name gedId media { file isPrimary title } }
       }
       fams {
         id
         gedId
-        husband { id name }
-        wife { id name }
+        husband { id name media { file isPrimary title } }
+        wife { id name media { file isPrimary title } }
         children {
           id
           name
@@ -70,6 +73,7 @@ const personTreeQuery = `
           sex
           birthDate
           deathDate
+          media { file isPrimary title }
           famc { id gedId }
           fams { id gedId }
         }
@@ -86,11 +90,20 @@ function spouseOf(family, personId) {
   return [family?.husband, family?.wife].find((candidate) => candidate && candidate.id !== personId) || null;
 }
 
+function primaryMedia(person) {
+  if (!person?.media?.length) {
+    return null;
+  }
+
+  return person.media.find((item) => item.isPrimary && item.file) || person.media.find((item) => item.file) || null;
+}
+
 function PersonNode({ data }) {
   const person = data.person;
   const parentFamily = person.famc?.[0] || null;
   const showParents = data.showParentControls && parentFamily && !data.parentsExpanded;
   const families = (person.fams || []).filter((family) => !data.expandedFamilyIds?.has(family.id));
+  const photo = primaryMedia(person);
 
   return (
     <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
@@ -106,6 +119,16 @@ function PersonNode({ data }) {
           {renderPersonLifeDates(person)}
         </Link>
       </div>
+
+      {photo?.file ? (
+        <div style={{ marginBottom: showParents || families.length ? 10 : 8 }}>
+          <img
+            src={photo.file}
+            alt={photo.title || formatPersonNameText(person?.name, 'Person photo')}
+            style={{ display: 'block', width: 72, height: 90, objectFit: 'cover', borderRadius: 10, border: '1px solid #dac8b5', background: '#eadfce' }}
+          />
+        </div>
+      ) : null}
 
       {showParents ? (
         <div style={{ marginBottom: families.length ? 10 : 0 }}>
@@ -163,8 +186,9 @@ const nodeTypes = { personNode: PersonNode, familyNode: FamilyNode };
 function estimateNodeHeight(person, layoutState) {
   const showParents = Boolean(person.famc?.[0]) && !layoutState.parentsExpanded;
   const visibleFamilyCount = (person.fams || []).filter((family) => !layoutState.expandedFamilyIds.has(family.id)).length;
+  const hasPhoto = Boolean(primaryMedia(person)?.file);
 
-  return 112 + (showParents ? 58 : 0) + (visibleFamilyCount ? visibleFamilyCount * 56 : 0);
+  return 112 + (hasPhoto ? 102 : 0) + (showParents ? 58 : 0) + (visibleFamilyCount ? visibleFamilyCount * 56 : 0);
 }
 
 function getLayoutState(personId, person, edges) {

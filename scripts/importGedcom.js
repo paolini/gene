@@ -138,6 +138,7 @@ function parseGedcom(content) {
         surname: null,
         sex: null,
         events: {},
+        media: [],
         occupations: [],
         titles: [],
         associations: [],
@@ -147,36 +148,46 @@ function parseGedcom(content) {
       };
       let curEvent = null;
       let curAssociation = null;
+      let curMediaObject = null;
       for (const l of r.lines.slice(1)) {
         const m = l.match(/^\d+\s+([^\s]+)(?:\s+(.*))?$/);
         if (!m) {
           unknownLines.push({ recordType: 'INDI', gedId, line: l });
           continue;
         }
+        const levelMatch = l.match(/^(\d+)\s+/);
+        const level = levelMatch ? Number(levelMatch[1]) : null;
         const tag = m[1];
         const data = m[2] || '';
         if (tag === 'NAME') {
           out.name = data.trim();
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'GIVN') {
           out.givenName = data.trim();
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'SURN') {
           out.surname = data.trim();
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'SEX') {
           out.sex = data.trim();
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'FAMS') {
           out.fams.push(data.trim());
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'FAMC') {
           out.famc.push(data.trim());
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'BIRT' || tag === 'DEAT' || tag === 'MARR' || tag === 'BURI' || tag === 'BAPM') {
           curEvent = tag;
           out.events[curEvent] = out.events[curEvent] || {};
           curAssociation = null;
+          curMediaObject = null;
         } else if (/^DATE$/.test(tag) && curEvent) {
           out.events[curEvent].date = data.trim();
         } else if (/^PLAC$/.test(tag) && curEvent) {
@@ -184,17 +195,42 @@ function parseGedcom(content) {
         } else if (tag === 'OCCU') {
           out.occupations.push(data.trim());
           curAssociation = null;
+          curMediaObject = null;
         } else if (tag === 'TITL') {
-          out.titles.push(data.trim());
+          if (curMediaObject && level && level > 1) {
+            curMediaObject.title = data.trim();
+          } else {
+            out.titles.push(data.trim());
+          }
           curAssociation = null;
         } else if (tag === 'ASSO') {
           curAssociation = { target: data.trim(), type: null, relationship: null };
           out.associations.push(curAssociation);
           curEvent = null;
+          curMediaObject = null;
         } else if (tag === 'TYPE' && curAssociation) {
           curAssociation.type = data.trim();
         } else if (tag === 'RELA' && curAssociation) {
           curAssociation.relationship = data.trim();
+        } else if (tag === 'OBJE') {
+          curEvent = null;
+          curAssociation = null;
+          curMediaObject = {
+            file: null,
+            format: null,
+            title: null,
+            isPrimary: false,
+            type: null
+          };
+          out.media.push(curMediaObject);
+        } else if (curMediaObject && tag === 'FILE') {
+          curMediaObject.file = data.trim();
+        } else if (curMediaObject && tag === 'FORM') {
+          curMediaObject.format = data.trim();
+        } else if (curMediaObject && tag === '_TYPE') {
+          curMediaObject.type = data.trim();
+        } else if (curMediaObject && tag === '_PRIM') {
+          curMediaObject.isPrimary = data.trim().toUpperCase() === 'Y';
         } else if (tag === 'NOTE' || tag === 'CONT' || tag === 'CONC' || tag === 'NPFX' || tag === 'NSFX') {
           // accepted but currently ignored
         } else {
@@ -217,7 +253,7 @@ function parseGedcom(content) {
         if (tag === 'HUSB') out.husband = data.trim();
         else if (tag === 'WIFE') out.wife = data.trim();
         else if (tag === 'CHIL') out.children.push(data.trim());
-        else if (tag === 'MARR') { curEvent = 'MARR'; out.events[curEvent] = out.events[curEvent] || {}; }
+        else if (tag === 'MARR' || tag === 'DIV') { curEvent = tag; out.events[curEvent] = out.events[curEvent] || {}; }
         else if (tag === 'DATE' && curEvent) out.events[curEvent].date = data.trim();
         else if (tag === 'PLAC' && curEvent) out.events[curEvent].place = data.trim();
         else if (tag === 'NOTE') out.notes.push(data.trim());
@@ -275,6 +311,7 @@ async function run() {
         sex: i.sex,
         birthDate: i.events && i.events.BIRT && i.events.BIRT.date ? i.events.BIRT.date : undefined,
         deathDate: i.events && i.events.DEAT && i.events.DEAT.date ? i.events.DEAT.date : undefined,
+        media: (i.media || []).filter((entry) => entry.file),
         fams: [],
         famc: [],
         raw: i.raw

@@ -59,8 +59,17 @@ const typeDefs = /* GraphQL */ `
     BIRT: EventDetails
     DEAT: EventDetails
     MARR: EventDetails
+    DIV: EventDetails
     BURI: EventDetails
     BAPM: EventDetails
+  }
+
+  type PersonMedia {
+    file: String
+    format: String
+    title: String
+    isPrimary: Boolean
+    type: String
   }
 
   type Person {
@@ -70,6 +79,7 @@ const typeDefs = /* GraphQL */ `
     sex: String
     birthDate: String
     deathDate: String
+    media: [PersonMedia!]!
     fams: [Family]
     famc: [Family]
   }

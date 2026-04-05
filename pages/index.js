@@ -13,6 +13,11 @@ const query = `
       birthDate
       deathDate
       sex
+      media {
+        file
+        isPrimary
+        title
+      }
       fams {
         id
         gedId
@@ -30,6 +35,14 @@ const query = `
     }
   }
 `;
+
+function primaryMedia(person) {
+  if (!person?.media?.length) {
+    return null;
+  }
+
+  return person.media.find((item) => item.isPrimary && item.file) || person.media.find((item) => item.file) || null;
+}
 
 function familyLabel(family, personId) {
   if (!family) {
@@ -101,6 +114,15 @@ export default function Home() {
           {filteredPersons.map((p) => (
             <Link key={p.id} href={`/person/${p.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <article style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', height: '100%' }}>
+                {primaryMedia(p)?.file ? (
+                  <div style={{ marginBottom: 12 }}>
+                    <img
+                      src={primaryMedia(p).file}
+                      alt={primaryMedia(p).title || formatPersonNameText(p.name, 'Person photo')}
+                      style={{ display: 'block', width: 88, height: 110, objectFit: 'cover', borderRadius: 12, border: '1px solid #e2d5c3', background: '#eadfce' }}
+                    />
+                  </div>
+                ) : null}
                 <header style={{ marginBottom: 12 }}>
                   <h2 style={{ margin: 0, fontSize: 22 }}>
                     {renderPersonSex(p)}

@@ -26,6 +26,13 @@ const personQuery = `
       birthDate
       deathDate
       sex
+      media {
+        file
+        format
+        title
+        isPrimary
+        type
+      }
       fams {
         id
         gedId
@@ -91,6 +98,14 @@ function familyLabel(family, personId) {
   const spouse = [family.husband, family.wife].find((candidate) => candidate && candidate.id !== personId);
 
   return formatPersonNameText(spouse?.name, family.gedId || 'Unnamed family');
+}
+
+function primaryMedia(person) {
+  if (!person?.media?.length) {
+    return null;
+  }
+
+  return person.media.find((item) => item.isPrimary && item.file) || person.media.find((item) => item.file) || null;
 }
 
 export default function PersonPage() {
@@ -166,6 +181,33 @@ export default function PersonPage() {
                 {renderPersonLifeDates(person)}
               </h1>
             </header>
+
+            {person.media?.length ? (
+              <section style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
+                  {person.media.map((item, index) => (
+                    <a
+                      key={`${item.file}-${index}`}
+                      href={item.file}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: 'none', color: 'inherit', width: 140, maxWidth: '100%' }}
+                    >
+                      <figure style={{ margin: 0, border: '1px solid #e2d5c3', borderRadius: 16, overflow: 'hidden', background: '#f6efe3', boxShadow: '0 8px 18px rgba(78, 53, 32, 0.07)' }}>
+                        <img
+                          src={item.file}
+                          alt={item.title || formatPersonNameText(person.name, 'Person photo')}
+                          style={{ display: 'block', width: '100%', height: 160, objectFit: 'cover', background: '#eadfce' }}
+                        />
+                        <figcaption style={{ padding: '10px 12px', fontSize: 13, color: '#6a5948' }}>
+                          {item.title || (item.isPrimary ? 'Primary photo' : 'Photo')}
+                        </figcaption>
+                      </figure>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
               <section>
