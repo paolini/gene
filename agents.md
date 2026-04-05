@@ -29,9 +29,9 @@ Implemented features:
 - Flusso inviti per assegnazione ruolo: creazione inviti, link di redemption e assegnazione del ruolo ad account autenticati senza ruolo.
 - Pagina admin utenti (`pages/admin/users.js`) per visualizzare utenti, cambiare ruolo e gestire inviti (`UserInvitation`).
 - Pagina dettaglio individuo (`pages/person/[id].js`) semplificata: famiglie in colonna, senza GEDCOM id visibili, con accesso alla vista albero tramite icona `🌳` nell'angolo alto destro.
-- Pagina albero persona (`pages/tree/person/[id].js`) con vista client-side basata su React Flow, nodi persona cliccabili e controlli `Expand` inline per genitori e famiglie.
+- Pagina albero persona (`pages/tree/person/[id].js`) con vista client-side basata su React Flow, nodi persona cliccabili, foto flottante nella card e controlli `Espandi` esterni: genitori sopra il nodo, famiglie/figli sotto il nodo.
 - Vista albero con connettori spouse-family corretti: aggancio laterale coerente, archi diretti verso il nodo famiglia, figli espansi senza pannello genitori, coniugi con pannello genitori disponibile.
-- Layout albero basato su ELK (`lib/personTreeLayout.js`) e componenti React Flow estratte in `components/tree/PersonTreeNode.js`.
+- Layout albero person-centered con pipeline separata tra modello semantico, placement deterministico e proiezione React Flow (`lib/personTreeModel.js`, `lib/personTreeLayout.js`, `lib/personTreeReactFlow.js`), con `family` come nodo connettore tra coniugi e figli.
 - Mutation GraphQL di scrittura protetta da ruolo esplicito (`editor` o `admin` per `addPerson`).
 - Query e mutation GraphQL admin per utenti e inviti: `currentUser`, `users`, `userInvitations`, `setUserRole`, `createUserInvitation`, `setUserInvitationActive`, `redeemUserInvitation`.
 - Import GEDCOM rigoroso con:
@@ -88,7 +88,9 @@ Development & run
   - `/models/UserInvitation.js` — modello inviti per assegnazione ruolo
   - `/lib/auth.js` — configurazione Auth.js / Google OAuth
   - `/lib/personName.js` — rendering/formatting nomi GEDCOM lato UI
-  - `/lib/personTreeLayout.js` — costruzione grafo e layout ELK per la vista albero
+  - `/lib/personTreeModel.js` — modello semantico dell'albero persona/famiglia
+  - `/lib/personTreeLayout.js` — placement deterministico dei nodi dell'albero
+  - `/lib/personTreeReactFlow.js` — proiezione nodi/archi per React Flow
   - `/pages/index.js` — ricerca individui
   - `/pages/_app.js` — bootstrap session provider client-side
   - `/pages/api/auth/[...nextauth].js` — endpoint auth Google
@@ -102,7 +104,7 @@ Development & run
   - `/lib/mongodb.js` — bootstrap MongoDB
 
 Known gaps / next steps:
-1. Rifinire ulteriormente il layout automatico del grafo React Flow/ELK person-centered; la base attuale funziona ma puo' essere resa piu' robusta su alberi grandi o sbilanciati.
+1. Rifinire ulteriormente il layout person-centered deterministico; la base attuale funziona ma puo' essere resa piu' robusta su alberi grandi o sbilanciati.
 2. Valutare un indicatore visivo migliore per distinguere i nodi caricati per ascendenza rispetto a quelli caricati da una espansione discendente.
 3. Estendere gli strumenti admin con workflow piu' completi (filtri, audit, revoca/rotazione inviti, eventuale gestione self-service dei ruoli).
 4. Esporre in GraphQL campi GEDCOM aggiuntivi gia' importati (`occupations`, `titles`, `associations`).

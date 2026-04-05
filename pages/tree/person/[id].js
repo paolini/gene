@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { personTreeNodeTypes } from '../../../components/tree/PersonTreeNode';
-import { buildElkLayout, buildFallbackNodes, buildGraphModel, spouseOf } from '../../../lib/personTreeLayout';
+import { buildElkLayout, buildFallbackNodes, buildGraphModel, spouseOf, SPOUSE_X_OFFSET } from '../../../lib/personTreeLayout';
 
 const personTreeQuery = `
   query PersonTree($id: ID!) {
@@ -155,6 +155,59 @@ export default function PersonTreePage() {
       try {
         const layoutResult = await buildElkLayout(graphModel.nodes, graphModel.edges, id);
         if (!cancelled) {
+          const debugNodes = layoutResult.nodes
+            .filter((node) => node.type === 'personNode')
+            .map((node) => ({
+              id: node.id,
+              name: node.data.person?.name || node.id,
+              logicalLevel: node.data.logicalLevel,
+              logicalX: node.data.logicalX,
+              renderedX: node.data.renderedX,
+              renderedY: node.data.renderedY,
+              handles: {
+                top: node.data.hasTopHandle,
+                bottom: node.data.hasBottomHandle,
+                left: node.data.hasLeftHandle,
+                right: node.data.hasRightHandle
+              }
+            }));
+          const debugFamilyNodes = layoutResult.nodes
+            .filter((node) => node.type === 'familyNode')
+            .map((node) => ({
+              id: node.id,
+              familyId: node.data.family?.id,
+              renderedX: Math.round(node.position.x),
+              renderedY: Math.round(node.position.y)
+            }));
+          const debugEdges = layoutResult.edges.map((edge) => ({
+            id: edge.id,
+            source: edge.source,
+            sourceHandle: edge.sourceHandle,
+            target: edge.target,
+            targetHandle: edge.targetHandle,
+            type: edge.type
+          }));
+          const graphEdges = graphModel.edges.map((edge) => ({
+            id: edge.id,
+            source: edge.source,
+            sourceHandle: edge.sourceHandle,
+            target: edge.target,
+            targetHandle: edge.targetHandle,
+            type: edge.type
+            }));
+
+          console.groupCollapsed(`[tree debug] layout ${id || ''}`);
+          console.log(JSON.stringify({
+            layoutId: id || '',
+            nodes: debugNodes,
+            familyNodes: debugFamilyNodes,
+            graphEdges,
+            renderedEdges: debugEdges,
+            expandedParentFamilyIds,
+            expandedDescFamilyIds
+          }, null, 2));
+          console.groupEnd();
+
           setNodes(layoutResult.nodes.map((node) => ({
             ...node,
             data: {
@@ -200,6 +253,25 @@ export default function PersonTreePage() {
     return person;
   }
 
+  function shiftLevelEntriesRight(level, minXExclusive, delta, excludeIds = []) {
+    const excludeIdSet = new Set(excludeIds);
+
+    setPersonMap((current) => {
+      const updatedEntries = Object.entries(current).map(([entryId, entry]) => {
+        if (excludeIdSet.has(entryId) || entry.level !== level || entry.x <= minXExclusive) {
+          return [entryId, entry];
+        }
+
+        return [entryId, {
+          ...entry,
+          x: entry.x + delta
+        }];
+      });
+
+      return Object.fromEntries(updatedEntries);
+    });
+  }
+
   async function expandParents(person) {
     const sourceEntry = personMap[person.id];
     const family = person.famc?.[0];
@@ -221,13 +293,28 @@ export default function PersonTreePage() {
       return;
     }
 
+    const familyChildren = family.children || [];
+    const anchorChild = familyChildren.find((child) => personMap[child.id]);
+    const anchorChildIndex = anchorChild ? familyChildren.findIndex((child) => child.id === anchorChild.id) : -1;
+    const anchorChildX = anchorChild ? personMap[anchorChild.id].x : null;
+
     const spouse = spouseOf(family, person.id);
     if (spouse?.id) {
-      await ensurePersonNode(spouse.id, sourceEntry.level, sourceEntry.x + 1, { showParentControls: true });
+      const spouseExists = Boolean(personMap[spouse.id]);
+
+      if (!spouseExists) {
+        shiftLevelEntriesRight(sourceEntry.level, sourceEntry.x, 1, [person.id]);
+      }
+
+      await ensurePersonNode(spouse.id, sourceEntry.level, sourceEntry.x + SPOUSE_X_OFFSET, { showParentControls: true });
     }
 
-    for (const [index, childRef] of (family.children || []).entries()) {
-      await ensurePersonNode(childRef.id, sourceEntry.level + 1, sourceEntry.x + index - Math.floor((family.children.length || 1) / 2), { showParentControls: false });
+    for (const [index, childRef] of familyChildren.entries()) {
+      const childX = anchorChildIndex >= 0 && anchorChildX !== null
+        ? anchorChildX + (index - anchorChildIndex)
+        : sourceEntry.x + index - ((familyChildren.length - 1) / 2);
+
+      await ensurePersonNode(childRef.id, sourceEntry.level + 1, childX, { showParentControls: false });
     }
 
     setExpandedDescFamilyIds((current) => current.includes(family.id) ? current : current.concat(family.id));

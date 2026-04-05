@@ -12,6 +12,17 @@ const externalButtonStyle = {
   boxShadow: '0 4px 12px rgba(78, 53, 32, 0.18)'
 };
 
+function handleStyle(isVisible, color, size, extraStyle = {}) {
+  return {
+    background: color,
+    width: size,
+    height: size,
+    opacity: isVisible ? 1 : 0,
+    pointerEvents: isVisible ? 'auto' : 'none',
+    ...extraStyle
+  };
+}
+
 function PersonTreeNode({ data }) {
   const person = data.person;
   const parentFamily = person.famc?.[0] || null;
@@ -33,10 +44,10 @@ function PersonTreeNode({ data }) {
       ) : null}
 
       <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
-        {data.hasTopHandle ? <Handle type="target" position={Position.Top} id="top" style={{ background: '#7a4b2a', width: 10, height: 10 }} /> : null}
-        {data.hasBottomHandle ? <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 10, height: 10 }} /> : null}
-        {data.hasLeftHandle ? <Handle type="source" position={Position.Left} id="left" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
-        {data.hasRightHandle ? <Handle type="source" position={Position.Right} id="right" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
+        <Handle type="target" position={Position.Top} id="top" style={handleStyle(data.hasTopHandle, '#7a4b2a', 10)} />
+        <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyle(data.hasBottomHandle, '#365f48', 10)} />
+        <Handle type="source" position={Position.Left} id="left" style={handleStyle(data.hasLeftHandle, '#7a4b2a', 8)} />
+        <Handle type="source" position={Position.Right} id="right" style={handleStyle(data.hasRightHandle, '#7a4b2a', 8)} />
 
         {photo?.file ? (
           <img
@@ -63,6 +74,13 @@ function PersonTreeNode({ data }) {
             {renderPersonName(person?.name, person?.gedId || 'Unknown person')}
             {renderPersonLifeDates(person)}
           </Link>
+        </div>
+
+        <div style={{ fontSize: 10, color: '#7b6a59', lineHeight: 1.35 }}>
+          logical: ({data.logicalLevel}, {data.logicalX})
+        </div>
+        <div style={{ fontSize: 10, color: '#7b6a59', lineHeight: 1.35 }}>
+          rendered: ({data.renderedX ?? '-'}, {data.renderedY ?? '-'})
         </div>
 
         {photo?.file ? <div style={{ clear: 'both' }} /> : null}
