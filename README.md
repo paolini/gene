@@ -89,6 +89,7 @@ If `MONGODB_URI` is not configured, the script still generates `data/gedcom.json
 
 Notes
 - API endpoint: `POST /api/graphql`
+- All API calls under `/api/*` are logged to console and, when MongoDB is configured, also persisted in the `apirequestlogs` collection with method, path, status, duration, user, and route-specific metadata.
 - The project contains a simple `Person` model and GraphQL queries/mutations to list and create persons.
 - Google authentication is handled with Auth.js for Next.js (`next-auth`) and persists signed-in users in MongoDB.
 - Genealogical data is private: unauthenticated users are redirected to sign-in pages and GraphQL genealogy queries require an authenticated session.
