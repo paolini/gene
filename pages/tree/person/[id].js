@@ -1,8 +1,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import ELK from 'elkjs/lib/elk.bundled.js';
 import ReactFlow, { Background, Controls, Handle, MiniMap, Position } from 'reactflow';
 import 'reactflow/dist/style.css';
+
+const elk = new ELK();
+const NODE_WIDTH = 300;
 
 const personTreeQuery = `
   query PersonTree($id: ID!) {
@@ -83,7 +87,7 @@ function PersonNode({ data }) {
   const parentFamily = person.famc?.[0] || null;
 
   return (
-    <div style={{ minWidth: 260, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative' }}>
+    <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 16, padding: 16, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
       <Handle type="target" position={Position.Top} id="top" style={{ background: '#7a4b2a', width: 10, height: 10 }} />
       <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 10, height: 10 }} />
 
@@ -142,11 +146,86 @@ function PersonNode({ data }) {
 
 const nodeTypes = { personNode: PersonNode };
 
+function estimateNodeHeight(person) {
+  const spouseFamilyCount = person.fams?.length || 0;
+  const hasParentFamily = Boolean(person.famc?.[0]);
+
+  return 220 + (hasParentFamily ? 70 : 35) + (spouseFamilyCount ? spouseFamilyCount * 110 : 35);
+}
+
+function buildFallbackNodes(personMap) {
+  return Object.values(personMap).map((entry) => ({
+    id: entry.person.id,
+    type: 'personNode',
+    position: { x: entry.x * 380, y: entry.level * 360 },
+    sourcePosition: Position.Bottom,
+    targetPosition: Position.Top,
+    data: { person: entry.person }
+  }));
+}
+
+async function buildElkLayout(personMap, edges, rootId) {
+  const entries = Object.values(personMap);
+
+  if (!entries.length) {
+    return [];
+  }
+
+  if (!edges.length) {
+    return buildFallbackNodes(personMap);
+  }
+
+  const elkGraph = {
+    id: 'gene-tree',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'DOWN',
+      'elk.layered.considerModelOrder': 'NODES_AND_EDGES',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.spacing.nodeNode': '70',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120'
+    },
+    children: entries.map((entry) => ({
+      id: entry.person.id,
+      width: NODE_WIDTH,
+      height: estimateNodeHeight(entry.person)
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      sources: [edge.source],
+      targets: [edge.target]
+    }))
+  };
+
+  const layout = await elk.layout(elkGraph);
+  const positionedNodes = new Map((layout.children || []).map((node) => [node.id, node]));
+  const rootNode = positionedNodes.get(rootId);
+  const rootOffsetX = rootNode?.x || 0;
+  const rootOffsetY = rootNode?.y || 0;
+
+  return entries.map((entry) => {
+    const positionedNode = positionedNodes.get(entry.person.id);
+
+    return {
+      id: entry.person.id,
+      type: 'personNode',
+      position: {
+        x: (positionedNode?.x || 0) - rootOffsetX,
+        y: (positionedNode?.y || 0) - rootOffsetY
+      },
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
+      data: { person: entry.person }
+    };
+  });
+}
+
 export default function PersonTreePage() {
   const router = useRouter();
   const { id } = router.query;
   const [personMap, setPersonMap] = useState({});
   const [edges, setEdges] = useState([]);
+  const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -180,10 +259,12 @@ export default function PersonTreePage() {
         }
         setPersonMap(person ? { [person.id]: { person, level: 0, x: 0 } } : {});
         setEdges([]);
+        setNodes(person ? buildFallbackNodes({ [person.id]: { person, level: 0, x: 0 } }) : []);
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError.message);
           setPersonMap({});
+          setNodes([]);
         }
       } finally {
         if (!cancelled) {
@@ -198,6 +279,43 @@ export default function PersonTreePage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function layoutNodes() {
+      try {
+        const nextNodes = await buildElkLayout(personMap, edges, id);
+        if (!cancelled) {
+          setNodes(nextNodes.map((node) => ({
+            ...node,
+            data: {
+              ...node.data,
+              onExpandParents: expandParents,
+              onExpandDescendants: expandDescendants
+            }
+          })));
+        }
+      } catch {
+        if (!cancelled) {
+          setNodes(buildFallbackNodes(personMap).map((node) => ({
+            ...node,
+            data: {
+              ...node.data,
+              onExpandParents: expandParents,
+              onExpandDescendants: expandDescendants
+            }
+          })));
+        }
+      }
+    }
+
+    layoutNodes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [edges, id, personMap]);
 
   async function ensurePersonNode(personId, level, x) {
     if (!personId || personMap[personId]) {
@@ -262,17 +380,6 @@ export default function PersonTreePage() {
           }));
     }
   }
-
-  const nodes = useMemo(() => Object.values(personMap).map((entry) => ({
-    id: entry.person.id,
-    type: 'personNode',
-    position: { x: entry.x * 340, y: entry.level * 280 },
-    data: {
-      person: entry.person,
-      onExpandParents: expandParents,
-      onExpandDescendants: expandDescendants
-    }
-  })), [personMap]);
 
   return (
     <div style={{ padding: 20, fontFamily: 'Georgia, serif', background: 'linear-gradient(180deg, #efe5d5 0%, #faf6ef 100%)', minHeight: '100vh', color: '#2f2419' }}>
