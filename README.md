@@ -78,4 +78,5 @@ Notes
 - API endpoint: `POST /api/graphql`
 - The project contains a simple `Person` model and GraphQL queries/mutations to list and create persons.
 - Google authentication is handled with Auth.js for Next.js (`next-auth`) and persists signed-in users in MongoDB.
+- Genealogical data is private: unauthenticated users are redirected to sign-in pages and GraphQL genealogy queries require an authenticated session.
 - The `addPerson` GraphQL mutation now requires an authenticated session.

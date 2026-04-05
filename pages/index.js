@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import AuthStatus from '../components/AuthStatus';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../lib/personName';
@@ -178,4 +179,19 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps(context) {
+  const session = await getSession(context);
+
+  if (!session) {
+    return {
+      redirect: {
+        destination: `/auth/signin?callbackUrl=${encodeURIComponent('/')}`,
+        permanent: false
+      }
+    };
+  }
+
+  return { props: {} };
 }

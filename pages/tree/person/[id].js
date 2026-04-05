@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
@@ -656,4 +657,19 @@ export default function PersonTreePage() {
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps(context) {
+  const session = await getSession(context);
+
+  if (!session) {
+    return {
+      redirect: {
+        destination: `/auth/signin?callbackUrl=${encodeURIComponent(context.resolvedUrl || '/')}`,
+        permanent: false
+      }
+    };
+  }
+
+  return { props: {} };
 }

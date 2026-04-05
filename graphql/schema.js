@@ -2,6 +2,12 @@ const Person = require('../models/Person');
 const Family = require('../models/Family');
 const User = require('../models/User');
 
+function requireAuthenticatedUser(context) {
+  if (!context?.session?.user?.email) {
+    throw new Error('Authentication required');
+  }
+}
+
 function resolveId(document) {
   if (!document) {
     return null;
@@ -110,10 +116,22 @@ const resolvers = {
     }
   },
   Query: {
-    persons: async () => Person.find().sort({ createdAt: -1 }).lean(),
-    person: async (_, { id }) => Person.findById(id).lean(),
-    families: async () => Family.find().sort({ createdAt: -1 }).lean(),
-    family: async (_, { id }) => Family.findById(id).lean(),
+    persons: async (_, __, context) => {
+      requireAuthenticatedUser(context);
+      return Person.find().sort({ createdAt: -1 }).lean();
+    },
+    person: async (_, { id }, context) => {
+      requireAuthenticatedUser(context);
+      return Person.findById(id).lean();
+    },
+    families: async (_, __, context) => {
+      requireAuthenticatedUser(context);
+      return Family.find().sort({ createdAt: -1 }).lean();
+    },
+    family: async (_, { id }, context) => {
+      requireAuthenticatedUser(context);
+      return Family.findById(id).lean();
+    },
     currentUser: async (_, __, context) => {
       if (!context?.session?.user?.email) {
         return null;
@@ -124,9 +142,7 @@ const resolvers = {
   },
   Mutation: {
     addPerson: async (_, { input }, context) => {
-      if (!context?.session?.user?.email) {
-        throw new Error('Authentication required');
-      }
+      requireAuthenticatedUser(context);
 
       const p = await Person.create(input);
       return p.toObject();

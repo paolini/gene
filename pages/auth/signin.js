@@ -51,7 +51,7 @@ const googleBadgeStyle = {
   boxShadow: 'inset 0 0 0 2px rgba(255, 255, 255, 0.85)'
 };
 
-export default function SignInPage({ providers, googleAuthConfigured: isConfigured }) {
+export default function SignInPage({ providers, callbackUrl, googleAuthConfigured: isConfigured }) {
   return (
     <div style={pageStyle}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
@@ -71,7 +71,7 @@ export default function SignInPage({ providers, googleAuthConfigured: isConfigur
           {isConfigured ? (
             <div style={{ display: 'grid', gap: 12 }}>
               {Object.values(providers || {}).map((provider) => (
-                <button key={provider.name} type="button" onClick={() => signIn(provider.id, { callbackUrl: '/' })} style={providerButtonStyle}>
+                <button key={provider.name} type="button" onClick={() => signIn(provider.id, { callbackUrl: callbackUrl || '/' })} style={providerButtonStyle}>
                   <span style={googleBadgeStyle}>G</span>
                   Sign in with {provider.name}
                 </button>
@@ -94,11 +94,12 @@ export default function SignInPage({ providers, googleAuthConfigured: isConfigur
 
 export async function getServerSideProps(context) {
   const session = await getSession(context);
+  const callbackUrl = typeof context.query.callbackUrl === 'string' ? context.query.callbackUrl : '/';
 
   if (session) {
     return {
       redirect: {
-        destination: '/',
+        destination: callbackUrl,
         permanent: false
       }
     };
@@ -109,6 +110,7 @@ export async function getServerSideProps(context) {
   return {
     props: {
       providers: providers || null,
+      callbackUrl,
       googleAuthConfigured
     }
   };

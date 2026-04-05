@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import AuthStatus from '../../components/AuthStatus';
@@ -212,4 +213,19 @@ export default function PersonPage() {
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps(context) {
+  const session = await getSession(context);
+
+  if (!session) {
+    return {
+      redirect: {
+        destination: `/auth/signin?callbackUrl=${encodeURIComponent(context.resolvedUrl || '/')}`,
+        permanent: false
+      }
+    };
+  }
+
+  return { props: {} };
 }
