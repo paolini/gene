@@ -1,3 +1,7 @@
+# To import a GEDCOM file in production:
+# docker cp ./gene.ged gene-app:/tmp/gene.ged
+# docker compose exec app npm run import:ged -- /tmp/gene.ged
+
 services:
   app:
     image: paolini/gene:latest

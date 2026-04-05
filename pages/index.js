@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { getSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import AuthStatus from '../components/AuthStatus';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../lib/personName';
 
 const query = `
@@ -87,13 +86,6 @@ export default function Home() {
   return (
     <div style={{ padding: 24, fontFamily: 'Georgia, serif', background: 'linear-gradient(180deg, #f5efe2 0%, #fbf8f1 100%)', minHeight: '100vh', color: '#2f2419' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <h1 style={{ marginBottom: 8 }}>Gene Tree</h1>
-        <p style={{ marginTop: 0, marginBottom: 24, color: '#6a5948' }}>
-          Persons, spouse families, and origin families loaded from GEDCOM.
-        </p>
-        <div style={{ marginBottom: 16 }}>
-          <AuthStatus />
-        </div>
         <div style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             value={searchTerm}

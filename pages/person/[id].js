@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import AuthStatus from '../../components/AuthStatus';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../lib/personName';
 
 const personTreeLinkStyle = {
@@ -161,10 +160,6 @@ export default function PersonPage() {
             ← Back to all persons
           </Link>
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <AuthStatus />
-        </div>
-
         {loading ? <div>Loading person...</div> : null}
         {!loading && error ? <div style={{ color: '#8b2d2d' }}>{error}</div> : null}
         {!loading && !error && !person ? <div>Person not found.</div> : null}

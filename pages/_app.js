@@ -1,9 +1,13 @@
 import { SessionProvider } from 'next-auth/react';
+import AppHeader from '../components/AppHeader';
 
 export default function App({ Component, pageProps: { session, ...pageProps } }) {
   return (
     <SessionProvider session={session}>
-      <Component {...pageProps} />
+      <AppHeader />
+      <div style={{ paddingTop: 72 }}>
+        <Component {...pageProps} />
+      </div>
     </SessionProvider>
   );
 }

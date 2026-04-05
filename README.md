@@ -44,10 +44,23 @@ The import script automatically reads `.env.local` and `.env`, so if `MONGODB_UR
 npm run import:ged
 ```
 
+If you want to import a specific GEDCOM file, run:
+
+```bash
+npm run import:ged -- ./path/to/file.ged
+```
+
 You can also pass a custom GEDCOM file path:
 
 ```bash
 node ./scripts/importGedcom.js ./path/to/file.ged
+```
+
+If the app is running in Docker Compose, copy the GEDCOM file into the app container and run the import there:
+
+```bash
+docker cp ./gene.ged <container-name>:/tmp/gene.ged
+docker compose exec app npm run import:ged -- /tmp/gene.ged
 ```
 
 What the script does:

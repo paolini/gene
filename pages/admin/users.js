@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { getSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import AuthStatus from '../../components/AuthStatus';
 
 const usersQuery = `
   query AdminUsers {
@@ -159,10 +158,6 @@ export default function AdminUsersPage() {
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
             ← Back to persons
           </Link>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <AuthStatus />
         </div>
 
         <section style={panelStyle}>
