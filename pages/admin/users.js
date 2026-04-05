@@ -119,6 +119,12 @@ const setInvitationActiveMutation = `
   }
 `;
 
+const deleteInvitationMutation = `
+  mutation DeleteUserInvitation($invitationId: ID!) {
+    deleteUserInvitation(invitationId: $invitationId)
+  }
+`;
+
 const pageStyle = {
   minHeight: '100vh',
   padding: 24,
@@ -186,6 +192,7 @@ export default function AdminUsersPage() {
   const [inviteReusable, setInviteReusable] = useState(false);
   const [creatingInvitation, setCreatingInvitation] = useState(false);
   const [togglingInvitationId, setTogglingInvitationId] = useState('');
+  const [deletingInvitationId, setDeletingInvitationId] = useState('');
   const [latestInviteUrl, setLatestInviteUrl] = useState('');
 
   async function fetchUsers() {
@@ -280,6 +287,30 @@ export default function AdminUsersPage() {
     } catch {
       setError('Unable to copy invite link');
     }
+  }
+
+  async function handleDeleteInvitation(invitationId) {
+    setDeletingInvitationId(invitationId);
+    setError('');
+
+    const response = await fetch('/api/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: deleteInvitationMutation,
+        variables: { invitationId }
+      })
+    });
+    const json = await response.json();
+
+    if (json.errors?.length) {
+      setError(json.errors[0].message || 'Unable to delete invitation');
+      setDeletingInvitationId('');
+      return;
+    }
+
+    setInvitations((currentInvitations) => currentInvitations.filter((invitation) => invitation.id !== invitationId));
+    setDeletingInvitationId('');
   }
 
   useEffect(() => {
@@ -428,7 +459,7 @@ export default function AdminUsersPage() {
                         <button
                           type="button"
                           onClick={() => handleToggleInvitation(invitation.id, !invitation.isActive)}
-                          disabled={togglingInvitationId === invitation.id}
+                          disabled={togglingInvitationId === invitation.id || deletingInvitationId === invitation.id}
                           style={{ ...selectStyle, cursor: 'pointer' }}
                         >
                           {togglingInvitationId === invitation.id
@@ -436,6 +467,14 @@ export default function AdminUsersPage() {
                             : invitation.isActive
                               ? 'Disable'
                               : 'Enable'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteInvitation(invitation.id)}
+                          disabled={togglingInvitationId === invitation.id || deletingInvitationId === invitation.id}
+                          style={{ ...selectStyle, cursor: 'pointer', borderColor: '#d9b3a9', color: '#8b2d2d' }}
+                        >
+                          {deletingInvitationId === invitation.id ? 'Deleting...' : 'Delete'}
                         </button>
                       </div>
                     </div>

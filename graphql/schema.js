@@ -102,6 +102,8 @@ async function redeemInvitationForUser(token, sessionUserEmail) {
   if (!invitation.isReusable) {
     update.$set.usedBy = user._id;
     update.$set.usedAt = usedAt;
+    update.$set.isActive = false;
+    update.$set.disabledAt = usedAt;
   }
 
   const updatedInvitation = await UserInvitation.findByIdAndUpdate(invitation._id, update, { new: true })
@@ -210,6 +212,7 @@ const typeDefs = /* GraphQL */ `
     setUserRole(userId: ID!, role: String): AuthUser
     createUserInvitation(role: String!, isReusable: Boolean): UserInvitation!
     setUserInvitationActive(invitationId: ID!, isActive: Boolean!): UserInvitation!
+    deleteUserInvitation(invitationId: ID!): ID!
     redeemUserInvitation(token: String!): UserInvitation!
   }
 `;
@@ -282,6 +285,7 @@ const resolvers = {
         .sort({ createdAt: -1 })
         .populate('createdBy')
         .populate('usedBy')
+        .populate('lastUsedBy')
         .lean();
     }
   },
@@ -352,6 +356,17 @@ const resolvers = {
       }
 
       return invitation;
+    },
+    deleteUserInvitation: async (_, { invitationId }, context) => {
+      requireAuthorizedRole(context, ['admin']);
+
+      const invitation = await UserInvitation.findByIdAndDelete(invitationId).lean();
+
+      if (!invitation) {
+        throw new Error('Invitation not found');
+      }
+
+      return resolveId(invitation);
     },
     redeemUserInvitation: async (_, { token }, context) => {
       requireAuthenticatedUser(context);
