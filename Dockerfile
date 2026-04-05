@@ -28,6 +28,7 @@ COPY --from=builder /app/components ./components
 COPY --from=builder /app/graphql ./graphql
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/models ./models
+COPY --from=builder /app/scripts ./scripts
 
 EXPOSE 3000
 

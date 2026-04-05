@@ -1,0 +1,33 @@
+services:
+  app:
+    image: paolini/gene:latest
+    container_name: gene-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: mongodb://db:27017/gene
+      AUTH_SECRET: replace-with-a-long-random-string
+      AUTH_GOOGLE_ID: your-google-oauth-client-id
+      AUTH_GOOGLE_SECRET: your-google-oauth-client-secret
+      NEXTAUTH_URL: http://localhost:3000
+    # If you are not using a reverse proxy, uncomment the port mapping below.
+    # ports:
+    #   - "3000:3000"
+
+  db:
+    image: mongo:8
+    container_name: gene-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  mongo_data:
