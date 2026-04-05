@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import ReactFlow, { Background, Controls, Handle, MiniMap, Position } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 const elk = new ELK();
 const NODE_WIDTH = 250;
+const FAMILY_NODE_SIZE = 22;
 
 const personTreeQuery = `
   query PersonTree($id: ID!) {
@@ -86,54 +87,50 @@ function PersonNode({ data }) {
   const person = data.person;
   const parentFamily = person.famc?.[0] || null;
   const showParents = parentFamily && !data.parentsExpanded;
-  const families = person.fams || [];
+  const families = (person.fams || []).filter((family) => !data.expandedFamilyIds?.has(family.id));
 
   return (
     <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
-      <Handle type="target" position={Position.Top} id="top" style={{ background: '#7a4b2a', width: 10, height: 10 }} />
-      <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 10, height: 10 }} />
+      {data.hasTopHandle ? <Handle type="target" position={Position.Top} id="top" style={{ background: '#7a4b2a', width: 10, height: 10 }} /> : null}
+      {data.hasBottomHandle ? <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 10, height: 10 }} /> : null}
+      {data.hasLeftHandle ? <Handle type="source" position={Position.Left} id="left" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
+      {data.hasRightHandle ? <Handle type="source" position={Position.Right} id="right" style={{ background: '#7a4b2a', width: 8, height: 8 }} /> : null}
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
-        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>{personName(person)}</div>
-          <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 10 }}>
-            {person.sex || 'Unknown sex'}
-          </div>
-          <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: showParents ? 10 : 0, lineHeight: 1.35 }}>
-            {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
-            {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
-          </div>
+      <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>{personName(person)}</div>
+      <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 10 }}>
+        {person.sex || 'Unknown sex'}
+      </div>
+      <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: showParents || families.length ? 10 : 0, lineHeight: 1.35 }}>
+        {person.birthDate ? `Born: ${person.birthDate}` : 'Birth date unknown'}
+        {person.deathDate ? ` • Died: ${person.deathDate}` : ''}
+      </div>
 
-          {showParents ? (
-            <div>
-              <strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Parents</strong>
+      {showParents ? (
+        <div style={{ marginBottom: families.length ? 10 : 0 }}>
+          <strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Parents</strong>
+          <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
+            {[parentFamily.husband?.name, parentFamily.wife?.name].filter(Boolean).join(' and ') || parentFamily.gedId}
+          </div>
+          <button onClick={() => data.onExpandParents(person)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 11 }}>
+            Show parents
+          </button>
+        </div>
+      ) : null}
+
+      {families.length ? (
+        <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}>
+          {families.map((family) => (
+            <div key={family.id}>
               <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: 6, lineHeight: 1.35 }}>
-                {[parentFamily.husband?.name, parentFamily.wife?.name].filter(Boolean).join(' and ') || parentFamily.gedId}
+                Family with <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{personName(spouseOf(family, person.id))}</span>
               </div>
-              <button onClick={() => data.onExpandParents(person)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#7a4b2a', color: '#fffaf2', cursor: 'pointer', fontSize: 11 }}>
-                Show parents
+              <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 11 }}>
+                Show family
               </button>
             </div>
-          ) : null}
+          ))}
         </div>
-
-        {families.length ? (
-          <div style={{ width: 92, flex: '0 0 92px', display: 'grid', gap: 6, justifyItems: 'start' }}>
-            {families.map((family) => (
-              <div key={family.id} style={{ width: '100%' }}>
-                <div style={{ fontSize: 11, color: '#6d5a48', marginBottom: data.expandedFamilyIds?.has(family.id) ? 0 : 6, lineHeight: 1.35, textAlign: 'left' }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#2f2419' }}>{personName(spouseOf(family, person.id))}</span>
-                </div>
-                {!data.expandedFamilyIds?.has(family.id) ? (
-                  <button onClick={() => data.onExpandDescendants(person, family)} style={{ padding: '5px 8px', border: 0, borderRadius: 8, background: '#365f48', color: '#f4f0e8', cursor: 'pointer', fontSize: 11, width: '100%' }}>
-                    Children
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 11 }}>
@@ -144,16 +141,23 @@ function PersonNode({ data }) {
   );
 }
 
-const nodeTypes = { personNode: PersonNode };
+function FamilyNode() {
+  return (
+    <div style={{ width: FAMILY_NODE_SIZE, height: FAMILY_NODE_SIZE, borderRadius: '50%', background: '#c59f74', border: '2px solid #7a4b2a', boxShadow: '0 6px 14px rgba(78, 53, 32, 0.12)', position: 'relative', boxSizing: 'border-box' }}>
+      <Handle type="target" position={Position.Left} id="left" style={{ background: '#7a4b2a', width: 8, height: 8, left: -5 }} />
+      <Handle type="target" position={Position.Right} id="right" style={{ background: '#7a4b2a', width: 8, height: 8, right: -5 }} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#365f48', width: 8, height: 8, bottom: -5 }} />
+    </div>
+  );
+}
+
+const nodeTypes = { personNode: PersonNode, familyNode: FamilyNode };
 
 function estimateNodeHeight(person, layoutState) {
-  const familyCount = person.fams?.length || 0;
   const showParents = Boolean(person.famc?.[0]) && !layoutState.parentsExpanded;
   const visibleFamilyCount = (person.fams || []).filter((family) => !layoutState.expandedFamilyIds.has(family.id)).length;
-  const leftColumnHeight = 82 + (showParents ? 58 : 0);
-  const rightColumnHeight = familyCount ? familyCount * 44 + visibleFamilyCount * 34 : 0;
 
-  return Math.max(leftColumnHeight, rightColumnHeight) + 36;
+  return 112 + (showParents ? 58 : 0) + (visibleFamilyCount ? visibleFamilyCount * 56 : 0);
 }
 
 function getLayoutState(personId, person, edges) {
@@ -167,30 +171,245 @@ function getLayoutState(personId, person, edges) {
   return { parentsExpanded, expandedFamilyIds };
 }
 
-function buildFallbackNodes(personMap) {
-  return Object.values(personMap).map((entry) => {
-    const layoutState = getLayoutState(entry.person.id, entry.person, []);
+function familyNodeId(familyId) {
+  return `family:${familyId}`;
+}
+
+function findFamilyInPersonMap(personMap, familyId) {
+  for (const entry of Object.values(personMap)) {
+    const family = [...(entry.person.famc || []), ...(entry.person.fams || [])].find((candidate) => candidate.id === familyId);
+    if (family) {
+      return family;
+    }
+  }
+
+  return null;
+}
+
+function buildGraphModel(personMap, expandedParentFamilyIds, expandedDescFamilyIds) {
+  const personEntries = Object.values(personMap);
+  const expandedFamilyIds = [...new Set([...expandedParentFamilyIds, ...expandedDescFamilyIds])];
+  const graphEdges = [];
+
+  const personNodes = personEntries.map((entry) => {
+    const layoutState = getLayoutState(entry.person.id, entry.person, graphEdges);
 
     return {
       id: entry.person.id,
       type: 'personNode',
-      position: { x: entry.x * 380, y: entry.level * 360 },
-      sourcePosition: Position.Bottom,
-      targetPosition: Position.Top,
-      data: { person: entry.person, ...layoutState }
+      fallbackPosition: { x: entry.x * 380, y: entry.level * 320 },
+      width: NODE_WIDTH,
+      height: estimateNodeHeight(entry.person, {
+        parentsExpanded: expandedParentFamilyIds.includes(entry.person.famc?.[0]?.id),
+        expandedFamilyIds: new Set(expandedDescFamilyIds)
+      }),
+      data: {
+        person: entry.person,
+        parentsExpanded: expandedParentFamilyIds.includes(entry.person.famc?.[0]?.id),
+        expandedFamilyIds: new Set(expandedDescFamilyIds),
+        hasTopHandle: expandedParentFamilyIds.includes(entry.person.famc?.[0]?.id),
+        hasBottomHandle: (entry.person.fams || []).some((family) => expandedDescFamilyIds.includes(family.id)),
+        hasLeftHandle: false,
+        hasRightHandle: false
+      }
+    };
+  });
+
+  const familyNodes = expandedFamilyIds
+    .map((familyId) => findFamilyInPersonMap(personMap, familyId))
+    .filter(Boolean)
+    .map((family) => ({
+      id: familyNodeId(family.id),
+      type: 'familyNode',
+      fallbackPosition: { x: 0, y: 0 },
+      width: FAMILY_NODE_SIZE,
+      height: FAMILY_NODE_SIZE,
+      data: { family }
+    }));
+
+  for (const familyId of expandedFamilyIds) {
+    const family = findFamilyInPersonMap(personMap, familyId);
+    if (!family) {
+      continue;
+    }
+
+    const connectorId = familyNodeId(family.id);
+
+    if (family.husband?.id && personMap[family.husband.id]) {
+      const husbandNode = personNodes.find((node) => node.id === family.husband.id);
+      if (husbandNode) {
+        husbandNode.data.hasRightHandle = true;
+      }
+      graphEdges.push({
+        id: `${family.husband.id}-${connectorId}`,
+        source: family.husband.id,
+        sourceHandle: 'right',
+        target: connectorId,
+        targetHandle: 'left',
+        type: 'smoothstep',
+        style: { stroke: '#9a6f4a', strokeWidth: 2 }
+      });
+    }
+
+    if (family.wife?.id && personMap[family.wife.id]) {
+      const wifeNode = personNodes.find((node) => node.id === family.wife.id);
+      if (wifeNode) {
+        wifeNode.data.hasLeftHandle = true;
+      }
+      graphEdges.push({
+        id: `${family.wife.id}-${connectorId}`,
+        source: family.wife.id,
+        sourceHandle: 'left',
+        target: connectorId,
+        targetHandle: 'right',
+        type: 'smoothstep',
+        style: { stroke: '#9a6f4a', strokeWidth: 2 }
+      });
+    }
+
+    for (const child of family.children || []) {
+      if (!personMap[child.id]) {
+        continue;
+      }
+
+      graphEdges.push({
+        id: `${connectorId}-${child.id}`,
+        source: connectorId,
+        sourceHandle: 'bottom',
+        target: child.id,
+        targetHandle: 'top',
+        type: 'smoothstep',
+        style: { stroke: '#4f7c63', strokeWidth: 2 }
+      });
+    }
+  }
+
+  return {
+    nodes: [...personNodes, ...familyNodes],
+    edges: graphEdges
+  };
+}
+
+function buildFallbackNodes(graphNodes) {
+  return graphNodes.map((node) => ({
+    id: node.id,
+    type: node.type,
+    position: node.fallbackPosition,
+    sourcePosition: Position.Bottom,
+    targetPosition: Position.Top,
+    data: node.data
+  }));
+}
+
+function alignFamilyNodes(graphNodes, positionedNodes, edges) {
+  const alignedNodes = new Map(positionedNodes.map((node) => [node.id, { ...node }]));
+
+  for (const node of graphNodes) {
+    if (node.type !== 'familyNode') {
+      continue;
+    }
+
+    const familyEdges = edges.filter((edge) => edge.target === node.id);
+    const spouseNodes = familyEdges
+      .map((edge) => alignedNodes.get(edge.source))
+      .filter(Boolean);
+
+    if (!spouseNodes.length) {
+      continue;
+    }
+
+    const familyNode = alignedNodes.get(node.id);
+    const averageCenterY = spouseNodes.reduce((sum, spouseNode) => sum + spouseNode.y + (spouseNode.height || 0) / 2, 0) / spouseNodes.length;
+
+    familyNode.y = averageCenterY - (familyNode.height || 0) / 2;
+
+    if (spouseNodes.length === 2) {
+      const leftSpouse = spouseNodes[0].x <= spouseNodes[1].x ? spouseNodes[0] : spouseNodes[1];
+      const rightSpouse = spouseNodes[0].x > spouseNodes[1].x ? spouseNodes[0] : spouseNodes[1];
+      const leftCenterX = leftSpouse.x + (leftSpouse.width || 0);
+      const rightCenterX = rightSpouse.x;
+
+      familyNode.x = (leftCenterX + rightCenterX) / 2 - (familyNode.width || 0) / 2;
+    }
+  }
+
+  return [...alignedNodes.values()];
+}
+
+function resolveRenderedEdges(edges, positionedNodes) {
+  const nodeMap = new Map(positionedNodes.map((node) => [node.id, node]));
+
+  return edges.map((edge) => {
+    if (!edge.target.startsWith('family:')) {
+      return edge;
+    }
+
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+
+    if (!sourceNode || !targetNode) {
+      return edge;
+    }
+
+    const sourceCenterX = sourceNode.x + (sourceNode.width || 0) / 2;
+    const targetCenterX = targetNode.x + (targetNode.width || 0) / 2;
+    const sourceHandle = sourceCenterX <= targetCenterX ? 'right' : 'left';
+    const targetHandle = sourceCenterX <= targetCenterX ? 'right' : 'left';
+
+    return {
+      ...edge,
+      sourceHandle,
+      targetHandle
     };
   });
 }
 
-async function buildElkLayout(personMap, edges, rootId) {
-  const entries = Object.values(personMap);
+function applyHandleVisibility(nodes, edges) {
+  const visibleHandlesByNode = new Map();
 
-  if (!entries.length) {
+  for (const edge of edges) {
+    if (edge.sourceHandle) {
+      const sourceHandles = visibleHandlesByNode.get(edge.source) || new Set();
+      sourceHandles.add(edge.sourceHandle);
+      visibleHandlesByNode.set(edge.source, sourceHandles);
+    }
+
+    if (edge.targetHandle) {
+      const targetHandles = visibleHandlesByNode.get(edge.target) || new Set();
+      targetHandles.add(edge.targetHandle);
+      visibleHandlesByNode.set(edge.target, targetHandles);
+    }
+  }
+
+  return nodes.map((node) => {
+    if (node.type !== 'personNode') {
+      return node;
+    }
+
+    const visibleHandles = visibleHandlesByNode.get(node.id) || new Set();
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        hasTopHandle: visibleHandles.has('top'),
+        hasBottomHandle: visibleHandles.has('bottom'),
+        hasLeftHandle: visibleHandles.has('left'),
+        hasRightHandle: visibleHandles.has('right')
+      }
+    };
+  });
+}
+
+async function buildElkLayout(graphNodes, edges, rootId) {
+  const rootNodeId = rootId;
+
+  if (!graphNodes.length) {
     return [];
   }
 
   if (!edges.length) {
-    return buildFallbackNodes(personMap);
+    return buildFallbackNodes(graphNodes);
   }
 
   const elkGraph = {
@@ -200,18 +419,15 @@ async function buildElkLayout(personMap, edges, rootId) {
       'elk.direction': 'DOWN',
       'elk.layered.considerModelOrder': 'NODES_AND_EDGES',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.spacing.nodeNode': '70',
       'elk.layered.spacing.nodeNodeBetweenLayers': '120'
     },
-    children: entries.map((entry) => {
-      const layoutState = getLayoutState(entry.person.id, entry.person, edges);
-
-      return {
-        id: entry.person.id,
-        width: NODE_WIDTH,
-        height: estimateNodeHeight(entry.person, layoutState)
-      };
-    }),
+    children: graphNodes.map((node) => ({
+      id: node.id,
+      width: node.width,
+      height: node.height
+    })),
     edges: edges.map((edge) => ({
       id: edge.id,
       sources: [edge.source],
@@ -220,37 +436,51 @@ async function buildElkLayout(personMap, edges, rootId) {
   };
 
   const layout = await elk.layout(elkGraph);
-  const positionedNodes = new Map((layout.children || []).map((node) => [node.id, node]));
-  const rootNode = positionedNodes.get(rootId);
+  const alignedNodes = alignFamilyNodes(graphNodes, layout.children || [], edges);
+  const positionedNodes = new Map(alignedNodes.map((node) => [node.id, node]));
+  const rootNode = positionedNodes.get(rootNodeId);
   const rootOffsetX = rootNode?.x || 0;
   const rootOffsetY = rootNode?.y || 0;
 
-  return entries.map((entry) => {
-    const layoutState = getLayoutState(entry.person.id, entry.person, edges);
-    const positionedNode = positionedNodes.get(entry.person.id);
+  const renderedNodes = graphNodes.map((node) => {
+    const positionedNode = positionedNodes.get(node.id);
 
     return {
-      id: entry.person.id,
-      type: 'personNode',
+      id: node.id,
+      type: node.type,
       position: {
         x: (positionedNode?.x || 0) - rootOffsetX,
         y: (positionedNode?.y || 0) - rootOffsetY
       },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
-      data: { person: entry.person, ...layoutState }
+      data: node.data
     };
   });
+
+  const renderedEdges = resolveRenderedEdges(edges, alignedNodes);
+
+  return {
+    nodes: applyHandleVisibility(renderedNodes, renderedEdges),
+    edges: renderedEdges
+  };
 }
 
 export default function PersonTreePage() {
   const router = useRouter();
   const { id } = router.query;
   const [personMap, setPersonMap] = useState({});
-  const [edges, setEdges] = useState([]);
+  const [expandedParentFamilyIds, setExpandedParentFamilyIds] = useState([]);
+  const [expandedDescFamilyIds, setExpandedDescFamilyIds] = useState([]);
   const [nodes, setNodes] = useState([]);
+  const [renderedEdges, setRenderedEdges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const graphModel = useMemo(
+    () => buildGraphModel(personMap, expandedParentFamilyIds, expandedDescFamilyIds),
+    [expandedDescFamilyIds, expandedParentFamilyIds, personMap]
+  );
 
   async function fetchPerson(personId) {
     const res = await fetch('/api/graphql', {
@@ -281,13 +511,16 @@ export default function PersonTreePage() {
           return;
         }
         setPersonMap(person ? { [person.id]: { person, level: 0, x: 0 } } : {});
-        setEdges([]);
-        setNodes(person ? buildFallbackNodes({ [person.id]: { person, level: 0, x: 0 } }) : []);
+        setExpandedParentFamilyIds([]);
+        setExpandedDescFamilyIds([]);
+        setNodes(person ? buildFallbackNodes(buildGraphModel({ [person.id]: { person, level: 0, x: 0 } }, [], []).nodes) : []);
+        setRenderedEdges([]);
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError.message);
           setPersonMap({});
           setNodes([]);
+          setRenderedEdges([]);
         }
       } finally {
         if (!cancelled) {
@@ -308,9 +541,9 @@ export default function PersonTreePage() {
 
     async function layoutNodes() {
       try {
-        const nextNodes = await buildElkLayout(personMap, edges, id);
+        const layoutResult = await buildElkLayout(graphModel.nodes, graphModel.edges, id);
         if (!cancelled) {
-          setNodes(nextNodes.map((node) => ({
+          setNodes(layoutResult.nodes.map((node) => ({
             ...node,
             data: {
               ...node.data,
@@ -318,10 +551,11 @@ export default function PersonTreePage() {
               onExpandDescendants: expandDescendants
             }
           })));
+          setRenderedEdges(layoutResult.edges);
         }
       } catch {
         if (!cancelled) {
-          setNodes(buildFallbackNodes(personMap).map((node) => ({
+          setNodes(buildFallbackNodes(graphModel.nodes).map((node) => ({
             ...node,
             data: {
               ...node.data,
@@ -329,6 +563,7 @@ export default function PersonTreePage() {
               onExpandDescendants: expandDescendants
             }
           })));
+          setRenderedEdges(graphModel.edges);
         }
       }
     }
@@ -338,7 +573,7 @@ export default function PersonTreePage() {
     return () => {
       cancelled = true;
     };
-  }, [edges, id, personMap]);
+  }, [graphModel, id]);
 
   async function ensurePersonNode(personId, level, x) {
     if (!personId || personMap[personId]) {
@@ -361,22 +596,10 @@ export default function PersonTreePage() {
 
     const parents = [family.husband, family.wife].filter(Boolean);
     for (const [index, parentRef] of parents.entries()) {
-      const parent = await ensurePersonNode(parentRef.id, sourceEntry.level - 1, sourceEntry.x + (index === 0 ? -1 : 1));
-      if (!parent) {
-        continue;
-      }
-      setEdges((current) => current.some((edge) => edge.id === `${parent.id}-${person.id}`)
-        ? current
-        : current.concat({
-            id: `${parent.id}-${person.id}`,
-            source: parent.id,
-            sourceHandle: 'bottom',
-            target: person.id,
-            targetHandle: 'top',
-            type: 'smoothstep',
-            style: { stroke: '#9a6f4a', strokeWidth: 2 }
-          }));
+      await ensurePersonNode(parentRef.id, sourceEntry.level - 1, sourceEntry.x + (index === 0 ? -1 : 1));
     }
+
+    setExpandedParentFamilyIds((current) => current.includes(family.id) ? current : current.concat(family.id));
   }
 
   async function expandDescendants(person, family) {
@@ -385,23 +608,16 @@ export default function PersonTreePage() {
       return;
     }
 
-    for (const [index, childRef] of (family.children || []).entries()) {
-      const child = await ensurePersonNode(childRef.id, sourceEntry.level + 1, sourceEntry.x + index - Math.floor((family.children.length || 1) / 2));
-      if (!child) {
-        continue;
-      }
-      setEdges((current) => current.some((edge) => edge.id === `${person.id}-${family.id}-${child.id}`)
-        ? current
-        : current.concat({
-            id: `${person.id}-${family.id}-${child.id}`,
-            source: person.id,
-            sourceHandle: 'bottom',
-            target: child.id,
-            targetHandle: 'top',
-            type: 'smoothstep',
-            style: { stroke: '#4f7c63', strokeWidth: 2 }
-          }));
+    const spouse = spouseOf(family, person.id);
+    if (spouse?.id) {
+      await ensurePersonNode(spouse.id, sourceEntry.level, sourceEntry.x + 1);
     }
+
+    for (const [index, childRef] of (family.children || []).entries()) {
+      await ensurePersonNode(childRef.id, sourceEntry.level + 1, sourceEntry.x + index - Math.floor((family.children.length || 1) / 2));
+    }
+
+    setExpandedDescFamilyIds((current) => current.includes(family.id) ? current : current.concat(family.id));
   }
 
   return (
@@ -418,7 +634,7 @@ export default function PersonTreePage() {
 
         {!loading && !error && nodes.length > 0 ? (
           <div style={{ height: '80vh', background: '#fffaf2', border: '1px solid #e1d4c1', borderRadius: 18, overflow: 'hidden' }}>
-            <ReactFlow nodes={nodes} edges={edges} fitView nodeTypes={nodeTypes} nodesDraggable>
+            <ReactFlow nodes={nodes} edges={renderedEdges} fitView nodeTypes={nodeTypes} nodesDraggable>
               <MiniMap pannable zoomable />
               <Controls />
               <Background color="#d8c4a8" gap={24} />
