@@ -56,7 +56,7 @@ export default function SignInPage({ providers, callbackUrl, googleAuthConfigure
     <div style={pageStyle}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-          ← Back
+          ← Torna alla home
         </Link>
 
         <div style={cardStyle}>

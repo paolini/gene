@@ -67,7 +67,7 @@ export default function PersonPage() {
       }
 
       if (json.errors?.length) {
-        setError(json.errors[0].message || 'Failed to load person');
+        setError(json.errors[0].message || 'caricamento persona fallito');
         setPerson(null);
       } else {
         setPerson(json.data?.person || null);
@@ -88,12 +88,12 @@ export default function PersonPage() {
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <div style={{ marginBottom: 20 }}>
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-            ← Back to all persons
+            ← Torna alla home
           </Link>
         </div>
-        {loading ? <div>Loading person...</div> : null}
+        {loading ? <div>carica persona...</div> : null}
         {!loading && error ? <div style={{ color: '#8b2d2d' }}>{error}</div> : null}
-        {!loading && !error && !person ? <div>Person not found.</div> : null}
+        {!loading && !error && !person ? <div>Persona non trovata.</div> : null}
 
         {person ? <Person person={person} /> : null}
       </div>

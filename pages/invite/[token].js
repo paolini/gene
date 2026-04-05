@@ -45,7 +45,7 @@ const buttonStyle = {
 
 export default function InviteRedeemPage({ token }) {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const [state, setState] = useState({ phase: 'idle', message: '' });
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function InviteRedeemPage({ token }) {
     let cancelled = false;
 
     async function redeem() {
-      setState({ phase: 'loading', message: 'Applying invitation...' });
+      setState({ phase: 'loading', message: 'Apro l\'invito...' });
 
       let json;
 
@@ -75,7 +75,7 @@ export default function InviteRedeemPage({ token }) {
         if (!cancelled) {
           setState({
             phase: 'error',
-            message: 'Unable to contact the server while redeeming the invitation.'
+            message: 'Impossibile contattare il server durante il riscatto dell\'invito.'
           });
         }
         return;
@@ -88,14 +88,20 @@ export default function InviteRedeemPage({ token }) {
       if (json.errors?.length) {
         setState({
           phase: 'error',
-          message: json.errors[0].message || 'Unable to redeem invitation'
+          message: json.errors[0].message || 'Impossibile riscattare l\'invito a causa di un errore sconosciuto.'
         });
         return;
       }
 
+      try {
+        await update();
+      } catch {
+        // Ignore refresh errors and continue with the server-side protected redirect.
+      }
+
       setState({
         phase: 'success',
-        message: `Role ${json.data?.redeemUserInvitation?.role || 'assigned'} assigned successfully. Redirecting...`
+        message: `Ruolo ${json.data?.redeemUserInvitation?.role || 'assigned'} assegnato con successo. Reindirizzamento...`
       });
 
       window.setTimeout(() => {
@@ -113,7 +119,7 @@ export default function InviteRedeemPage({ token }) {
   if (status === 'loading') {
     return (
       <div style={pageStyle}>
-        <div style={cardStyle}>Checking session...</div>
+        <div style={cardStyle}>Controlla sessione...</div>
       </div>
     );
   }
@@ -123,7 +129,7 @@ export default function InviteRedeemPage({ token }) {
       <div style={pageStyle}>
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-            ← Back
+            ← Torna alla home
           </Link>
 
           <div style={cardStyle}>
@@ -147,23 +153,23 @@ export default function InviteRedeemPage({ token }) {
     <div style={pageStyle}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-          ← Back to home
+          ← Torna alla home
         </Link>
 
         <div style={cardStyle}>
           <div style={{ fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8a735d', marginBottom: 10 }}>
-            Invitation
+            Invito
           </div>
-          <h1 style={{ margin: '0 0 10px', fontSize: 34 }}>Redeem invitation</h1>
+          <h1 style={{ margin: '0 0 10px', fontSize: 34 }}>Riscatta l'invito</h1>
           <p style={{ margin: '0 0 20px', color: '#6d5a48', lineHeight: 1.6 }}>
-            Signed in as {session.user.name || session.user.email || 'unknown user'}.
+            Sei {session.user.name || session.user.email || 'utente sconosciuto'}.
           </p>
           <div style={{ color: state.phase === 'error' ? '#8b2d2d' : '#5b4938', marginBottom: 20 }}>
-            {state.message || 'Preparing invitation...'}
+            {state.message || "preparo l'invito..."}
           </div>
           {state.phase === 'success' ? (
             <Link href="/" style={buttonStyle}>
-              Continue to the app
+              Apri l'applicazione
             </Link>
           ) : null}
         </div>

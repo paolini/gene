@@ -326,7 +326,7 @@ export default function AdminUsersPage() {
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: 20 }}>
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-            ← Back to persons
+            ← Indietro alla home
           </Link>
         </div>
 

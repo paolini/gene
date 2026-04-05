@@ -35,7 +35,7 @@ export default function PendingAccessPage({ user }) {
     <div style={pageStyle}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <Link href="/auth/signin" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-          ← Back to sign in
+          ← Torna alla pagina di accesso
         </Link>
 
         <div style={cardStyle}>
