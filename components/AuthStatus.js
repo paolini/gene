@@ -38,6 +38,11 @@ export default function AuthStatus() {
       <div style={{ fontSize: 13, color: '#7b6a59' }}>
         Role: {session.user.role || 'pending'}
       </div>
+      {session.user.role === 'admin' ? (
+        <Link href="/admin/users" style={{ ...buttonStyle, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+          Manage users
+        </Link>
+      ) : null}
       <button type="button" onClick={() => signOut()} style={buttonStyle}>
         Sign out
       </button>

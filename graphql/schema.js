@@ -21,6 +21,18 @@ function requireAuthorizedRole(context, allowedRoles) {
   }
 }
 
+function normalizeRole(role) {
+  if (role == null || role === '') {
+    return null;
+  }
+
+  if (['guest', 'editor', 'admin'].includes(role)) {
+    return role;
+  }
+
+  throw new Error('Invalid role');
+}
+
 function resolveId(document) {
   if (!document) {
     return null;
@@ -78,6 +90,10 @@ const typeDefs = /* GraphQL */ `
     email: String
     image: String
     role: String
+    emailVerified: Boolean
+    lastLoginAt: String
+    createdAt: String
+    updatedAt: String
   }
 
   type Query {
@@ -86,6 +102,7 @@ const typeDefs = /* GraphQL */ `
     families: [Family]
     family(id: ID!): Family
     currentUser: AuthUser
+    users: [AuthUser]
   }
 
   input PersonInput {
@@ -98,6 +115,7 @@ const typeDefs = /* GraphQL */ `
 
   type Mutation {
     addPerson(input: PersonInput!): Person
+    setUserRole(userId: ID!, role: String): AuthUser
   }
 `;
 
@@ -128,6 +146,9 @@ const resolvers = {
       return Person.find({ _id: { $in: parent.children } }).lean();
     }
   },
+  AuthUser: {
+    id: (parent) => resolveId(parent)
+  },
   Query: {
     persons: async (_, __, context) => {
       requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
@@ -151,6 +172,10 @@ const resolvers = {
       }
 
       return User.findOne({ email: context.session.user.email }).lean();
+    },
+    users: async (_, __, context) => {
+      requireAuthorizedRole(context, ['admin']);
+      return User.find().sort({ createdAt: 1, email: 1 }).lean();
     }
   },
   Mutation: {
@@ -159,6 +184,22 @@ const resolvers = {
 
       const p = await Person.create(input);
       return p.toObject();
+    },
+    setUserRole: async (_, { userId, role }, context) => {
+      requireAuthorizedRole(context, ['admin']);
+
+      const normalizedRole = normalizeRole(role);
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { $set: { role: normalizedRole } },
+        { new: true, runValidators: true }
+      ).lean();
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      return user;
     }
   }
 };
