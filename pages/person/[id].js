@@ -173,11 +173,6 @@ export default function PersonPage() {
                             Open person tree
                           </Link>
                         </div>
-                        <div style={{ marginTop: 4 }}>
-                          <Link href={`/family/${family.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 12 }}>
-                            Open family-centered tree
-                          </Link>
-                        </div>
                       </li>
                     ))}
                   </ul>
@@ -202,11 +197,6 @@ export default function PersonPage() {
                         <div style={{ marginTop: 6 }}>
                           <Link href={`/tree/person/${person.id}`} style={{ color: '#365f48', textDecoration: 'none', fontSize: 13 }}>
                             Open person tree
-                          </Link>
-                        </div>
-                        <div style={{ marginTop: 4 }}>
-                          <Link href={`/family/${family.id}`} style={{ color: '#7a4b2a', textDecoration: 'none', fontSize: 12 }}>
-                            Open family-centered tree
                           </Link>
                         </div>
                       </li>
