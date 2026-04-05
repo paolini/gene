@@ -657,8 +657,8 @@ export default function PersonTreePage() {
     <div style={{ padding: 20, fontFamily: 'Georgia, serif', background: 'linear-gradient(180deg, #efe5d5 0%, #faf6ef 100%)', minHeight: '100vh', color: '#2f2419' }}>
       <div style={{ maxWidth: 1500, margin: '0 auto' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>← Back to search</Link>
-          <div style={{ color: '#6d5a48' }}>Interactive person-centered tree. Expand parents or descendants from each person card.</div>
+          <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>← torna alla ricerca</Link>
+          <div style={{ color: '#6d5a48' }}>Espandi i genitori o i discendenti da ogni scheda della persona.</div>
         </div>
         {loading ? <div>Loading tree...</div> : null}
         {!loading && error ? <div style={{ color: '#8b2d2d' }}>{error}</div> : null}

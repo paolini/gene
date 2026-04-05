@@ -2,19 +2,7 @@ import Link from 'next/link';
 import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../lib/personName';
-
-const personTreeLinkStyle = {
-  color: '#365f48',
-  textDecoration: 'none',
-  fontSize: 18,
-  lineHeight: 1,
-  display: 'inline-flex',
-  alignItems: 'center',
-  position: 'absolute',
-  top: 20,
-  right: 20
-};
+import Person from '../../components/Person';
 
 const personQuery = `
   query Person($id: ID!) {
@@ -49,63 +37,6 @@ const personQuery = `
     }
   }
 `;
-
-function PersonLink({ person }) {
-  if (!person?.id) {
-    return renderPersonName(person?.name, 'Unknown person');
-  }
-
-  return (
-    <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-      {renderPersonName(person.name, person.id)}
-    </Link>
-  );
-}
-
-function PersonList({ people }) {
-  if (!people || people.length === 0) {
-    return 'None listed';
-  }
-
-  return people.map((person, index) => (
-    <span key={person.id || `${person.name}-${index}`}>
-      {index > 0 ? ', ' : ''}
-      <PersonLink person={person} />
-    </span>
-  ));
-}
-
-function ParentsLine({ family }) {
-  const parents = [family?.husband, family?.wife].filter(Boolean);
-  if (parents.length === 0) {
-    return family?.gedId || 'Unknown parents';
-  }
-
-  return parents.map((parent, index) => (
-    <span key={parent.id || `${parent.name}-${index}`}>
-      {index > 0 ? ' and ' : ''}
-      <PersonLink person={parent} />
-    </span>
-  ));
-}
-
-function familyLabel(family, personId) {
-  if (!family) {
-    return 'Unknown family';
-  }
-
-  const spouse = [family.husband, family.wife].find((candidate) => candidate && candidate.id !== personId);
-
-  return formatPersonNameText(spouse?.name, family.gedId || 'Unnamed family');
-}
-
-function primaryMedia(person) {
-  if (!person?.media?.length) {
-    return null;
-  }
-
-  return person.media.find((item) => item.isPrimary && item.file) || person.media.find((item) => item.file) || null;
-}
 
 export default function PersonPage() {
   const router = useRouter();
@@ -164,89 +95,7 @@ export default function PersonPage() {
         {!loading && error ? <div style={{ color: '#8b2d2d' }}>{error}</div> : null}
         {!loading && !error && !person ? <div>Person not found.</div> : null}
 
-        {person ? (
-          <article style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 20, padding: 24, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative' }}>
-            <header style={{ marginBottom: 20 }}>
-              <Link href={`/tree/person/${person.id}`} style={personTreeLinkStyle} aria-label="Open interactive person tree" title="Open interactive person tree">
-                🌳
-              </Link>
-              <h1 style={{ margin: 0, fontSize: 34 }}>
-                {renderPersonSex(person)}
-                {renderPersonName(person.name, 'Unnamed person')}
-                {renderPersonLifeDates(person)}
-              </h1>
-            </header>
-
-            {person.media?.length ? (
-              <section style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
-                  {person.media.map((item, index) => (
-                    <a
-                      key={`${item.file}-${index}`}
-                      href={item.file}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ textDecoration: 'none', color: 'inherit', width: 140, maxWidth: '100%' }}
-                    >
-                      <figure style={{ margin: 0, border: '1px solid #e2d5c3', borderRadius: 16, overflow: 'hidden', background: '#f6efe3', boxShadow: '0 8px 18px rgba(78, 53, 32, 0.07)' }}>
-                        <img
-                          src={item.file}
-                          alt={item.title || formatPersonNameText(person.name, 'Person photo')}
-                          style={{ display: 'block', width: '100%', height: 160, objectFit: 'cover', background: '#eadfce' }}
-                        />
-                        <figcaption style={{ padding: '10px 12px', fontSize: 13, color: '#6a5948' }}>
-                          {item.title || (item.isPrimary ? 'Primary photo' : 'Photo')}
-                        </figcaption>
-                      </figure>
-                    </a>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
-              <section>
-                {person.famc?.length ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {person.famc.map((family) => (
-                      <li key={family.id} style={{ marginBottom: 10 }}>
-                        <div>
-                          Parents: <ParentsLine family={family} />
-                        </div>
-                        <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
-                          Siblings: <PersonList people={(family.children || []).filter((child) => child.id !== person.id)} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  null
-                )}
-              </section>
-
-              <section>
-                {person.fams?.length ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {person.fams.map((family) => (
-                      <li key={family.id} style={{ marginBottom: 10 }}>
-                        <div>
-                          Spouse: <PersonLink person={[family.husband, family.wife].find((candidate) => candidate && candidate.id !== person.id)} />
-                        </div>
-                        <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
-                          {family.children?.length
-                            ? <span>Children: <PersonList people={family.children} /></span>
-                            : 'No children listed'}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  null
-                )}
-              </section>
-            </div>
-          </article>
-        ) : null}
+        {person ? <Person person={person} /> : null}
       </div>
     </div>
   );
