@@ -30,6 +30,86 @@ const personTreeQuery = `
 `;
 
 export function usePersonTree(personId) {
+  const targetPersonId = personId;
+  const [personMap, setPersonMap] = useState({});
+  const [personTree, setPersonTree] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  async function fetchPerson(personId) {
+    const res = await fetch('/api/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: personTreeQuery, variables: { id: personId } })
+    });
+    const json = await res.json();
+    if (json.errors?.length) {
+      throw new Error(json.errors[0].message || 'Failed to load person');
+    }
+    return json.data?.person || null;
+  }
+
+  useEffect(() => {
+    if (!targetPersonId) return;
+    let cancelled = false;
+
+    async function getPerson(personId) {
+      if (personMap[personId]) return personMap[personId];
+      const person = await fetchPerson(personId);
+      if (cancelled) return null;
+      setPersonMap((current) => current[person.id] ? current : {
+        ...current,
+        [person.id]: person
+      });
+      return person;
+    }
+
+    async function personWithParents(person, depth) {
+        let parents = [];
+        const family = person.famc?.[0];
+        if (family) {
+            for (const parentRef of [family.husband, family.wife]) {
+                const parent = parentRef && await getPerson(parentRef.id);
+                if (parent) {
+                    if (depth>0) {
+                        parents.push(await personWithParents(parent, depth - 1));
+                    } else {
+                        parents.push(parent);
+                    }
+                }
+            }
+        }
+        return { ...person, parents };
+    }
+
+    async function loadPersonTree() {
+      try {
+        setLoading(true);
+        setError('');
+        const person = await getPerson(targetPersonId);
+        const personTree = await personWithParents(person, 2);
+        setPersonTree(personTree);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message);
+          setPersonMap({});
+          setPersonTree(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadPersonTree();
+    return () => { cancelled = true; };
+  }, [targetPersonId]);
+
+  return { loading, error, personTree };
+}
+
+/*
+
+export function usePersonTreeOld(personId) {
   const id = personId;
   const [personMap, setPersonMap] = useState({});
   const [expandedParentFamilyIds, setExpandedParentFamilyIds] = useState([]);
@@ -182,3 +262,5 @@ export function usePersonTree(personId) {
 
   return { loading, error, nodes, renderedEdges };
 }
+
+*/
