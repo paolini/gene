@@ -25,27 +25,14 @@ function handleStyle(isVisible, color, size, extraStyle = {}) {
 
 function PersonTreeNode({ data }) {
   const person = data.person;
-  const parentFamily = person.famc?.[0] || null;
-  const showParents = data.showParentControls && parentFamily && !data.parentsExpanded;
-  const families = (person.fams || []).filter((family) => !data.expandedFamilyIds?.has(family.id));
   const photo = primaryMedia(person);
-  const parentLabel = [parentFamily?.husband, parentFamily?.wife].filter(Boolean).length > 0
-    ? [parentFamily.husband, parentFamily.wife].filter(Boolean).map((parent) => formatPersonNameText(parent.name, parent.id)).join(' and ')
-    : parentFamily?.gedId;
 
   return (
     <div style={{ width: NODE_WIDTH, position: 'relative', overflow: 'visible' }}>
-      {showParents ? (
-        <div style={{ position: 'absolute', left: '50%', top: -16, transform: 'translate(-50%, -100%)', zIndex: 2 }}>
-          <button onClick={() => data.onExpandParents(person)} style={{ ...externalButtonStyle, background: '#7a4b2a', color: '#fffaf2' }}>
-            Espandi genitori: {parentLabel}
-          </button>
-        </div>
-      ) : null}
 
       <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
-        <Handle type="target" position={Position.Top} id="top" style={handleStyle(data.hasTopHandle, '#7a4b2a', 10)} />
-        <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyle(data.hasBottomHandle, '#365f48', 10)} />
+        <Handle type="source" position={Position.Top} id="top" style={handleStyle(data.hasTopHandle, '#7a4b2a', 10)} />
+        <Handle type="target" position={Position.Bottom} id="bottom" style={handleStyle(data.hasBottomHandle, '#365f48', 10)} />
         <Handle type="source" position={Position.Left} id="left" style={handleStyle(data.hasLeftHandle, '#7a4b2a', 8)} />
         <Handle type="source" position={Position.Right} id="right" style={handleStyle(data.hasRightHandle, '#7a4b2a', 8)} />
 
@@ -86,23 +73,6 @@ function PersonTreeNode({ data }) {
         {photo?.file ? <div style={{ clear: 'both' }} /> : null}
       </div>
 
-      {families.length ? (
-        <div style={{ position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)', marginTop: 16, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, zIndex: 2 }}>
-          {families.map((family) => {
-            const spouse = spouseOf(family, person.id);
-
-            return (
-              <button
-                key={family.id}
-                onClick={() => data.onExpandDescendants(person, family)}
-                style={{ ...externalButtonStyle, background: '#365f48', color: '#f4f0e8' }}
-              >
-                Espandi figli con: {formatPersonNameText(spouse?.name, spouse?.gedId || 'Unknown person')}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 }

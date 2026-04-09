@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { buildElkLayout, buildFallbackNodes, buildGraphModel, spouseOf, SPOUSE_X_OFFSET } from '../../lib/personTreeLayout';
+import { useEffect, useState } from 'react';
 
 const personTreeQuery = `
   query PersonTree($id: ID!) {
