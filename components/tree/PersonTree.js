@@ -4,17 +4,13 @@ import 'reactflow/dist/style.css';
 import { personTreeNodeTypes } from './PersonTreeNode';
 import { usePersonTree } from './usePersonTree';
 import { buildGraphModel } from '../../lib/personTreeLayout';
-import { buildFallbackNodes } from '../../lib/personTreeReactFlow';
 
 export default function PersonTree({ personId }) {
   const { loading, error, personTree } = usePersonTree(personId);
   const graph = personTree ? buildGraphModel(personTree) : { nodes: [], edges: [] };
-  const edges = graph.edges || [];
-  const fallbackReadyNodes = (graph.nodes || []).map((n) => ({
-    ...n,
-    fallbackPosition: n.fallbackPosition || n.position || { x: 0, y: 0 }
-  }));
-  const nodes = fallbackReadyNodes.length ? buildFallbackNodes(fallbackReadyNodes) : [];
+
+  const edges = graph.edges 
+  const nodes = graph.nodes 
 
   return (
     <div>

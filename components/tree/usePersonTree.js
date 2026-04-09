@@ -81,12 +81,31 @@ export function usePersonTree(personId) {
         return { ...person, parents };
     }
 
+    async function personWithDescendants(person, depth) {
+      if (depth <= 0) return person;
+      const families = person.fams || [];
+      const familiesWithDescendants = [];
+      for (const family of families) {
+        const children = family.children || [];
+        const childrenWithDescendants = [];
+        for (const childRef of children) {
+          const child = childRef && await getPerson(childRef.id);
+          if (child) {
+            childrenWithDescendants.push(await personWithDescendants(child, depth - 1));
+          }
+        }
+        familiesWithDescendants.push({ ...family, children: childrenWithDescendants });
+      }
+      return { ...person, families: familiesWithDescendants };
+    }
+
     async function loadPersonTree() {
       try {
         setLoading(true);
         setError('');
         const person = await getPerson(targetPersonId);
-        const personTree = await personWithParents(person, 2);
+        const personWithParentsTree = await personWithParents(person, 2);
+        const personTree = await personWithDescendants(personWithParentsTree, 2);
         setPersonTree(personTree);
       } catch (loadError) {
         if (!cancelled) {
