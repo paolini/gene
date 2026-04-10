@@ -278,9 +278,8 @@ function parseGedcom(content) {
   return { individuals, families };
 }
 
-async function run() {
+async function run({ dry, json, fileArg }) {
   try {
-    const fileArg = process.argv[2] || path.join(__dirname, '..', 'gene.ged');
     if (!fs.existsSync(fileArg)) {
       console.error('GEDCOM file not found:', fileArg);
       process.exit(1);
@@ -288,12 +287,16 @@ async function run() {
     const content = fs.readFileSync(fileArg, 'utf8');
     const parsed = parseGedcom(content);
 
-    // write JSON export
-    const outDir = path.join(__dirname, '..', 'data');
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-    const outPath = path.join(outDir, 'gedcom.json');
-    fs.writeFileSync(outPath, JSON.stringify(parsed, null, 2), 'utf8');
-    console.log('Wrote parsed GEDCOM to', outPath);
+    if (json) {
+      console.warn('Outputting JSON to stdout.');
+      console.log(JSON.stringify(parsed, null, 2));
+      return;
+    }
+
+    if (dry) {
+      console.warn('Dry run: skipping DB import. No changes will be written to the database.');
+      return;
+    }
 
     // Try to connect to MongoDB and import
     const conn = await connect();
@@ -352,4 +355,16 @@ async function run() {
   }
 }
 
-run().catch(err => { console.error(err); process.exit(1); });
+const args = process.argv.slice(2);
+const json = args.includes('--json');
+const dry = json || args.includes('--dry') || args.includes('--dry-run');
+const fileArgs = args.filter(arg => !arg.startsWith('-'))
+
+if (fileArgs.length > 1) {
+  console.error('Multiple file arguments provided. Please provide only one GEDCOM file to import.');
+  process.exit(1);
+}
+
+const fileArg = fileArgs[0] || path.join(__dirname, '..', 'gene.ged');
+
+run({ dry, json, fileArg }).catch(err => { console.error(err); process.exit(1); });
