@@ -3,15 +3,6 @@ import { Handle, Position } from 'reactflow';
 import { FAMILY_NODE_SIZE, NODE_WIDTH, primaryMedia, spouseOf } from '../../lib/personTreeLayout';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../../lib/personName';
 
-const externalButtonStyle = {
-  padding: '3px 7px',
-  border: 0,
-  borderRadius: 8,
-  cursor: 'pointer',
-  fontSize: 10,
-  boxShadow: '0 4px 12px rgba(78, 53, 32, 0.18)'
-};
-
 function handleStyle(isVisible, color, size, extraStyle = {}) {
   return {
     background: color,
@@ -28,9 +19,9 @@ function PersonTreeNode({ data }) {
   const photo = primaryMedia(person);
 
   return (
-    <div style={{ width: NODE_WIDTH, position: 'relative', overflow: 'visible' }}>
+    <div className="person-tree-node" style={{ width: NODE_WIDTH, position: 'relative', overflow: 'visible' }}>
 
-      <div style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
+      <div className="person-node" style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
         {/* Top handles: add both source and target variants so edges can bind whether node is a parent or a child */}
         <Handle type="source" position={Position.Top} id="top-source" style={handleStyle(data.hasTopHandle, '#7a4b2a', 10)} />
         <Handle type="target" position={Position.Top} id="top" style={handleStyle(data.hasTopHandle, '#365f48', 10)} />
@@ -70,15 +61,13 @@ function PersonTreeNode({ data }) {
           </Link>
         </div>
 
-        <div style={{ fontSize: 10, color: '#7b6a59', lineHeight: 1.35 }}>
-          logical: ({data.logicalLevel}, {data.logicalX})
-        </div>
-        <div style={{ fontSize: 10, color: '#7b6a59', lineHeight: 1.35 }}>
-          rendered: ({data.renderedX ?? '-'}, {data.renderedY ?? '-'})
-        </div>
+        <Link href={`/tree/person/${person.id}`} aria-label="Open interactive person tree" title="Open interactive person tree" className="tree-link">
+          🌳
+        </Link>
 
         {photo?.file ? <div style={{ clear: 'both' }} /> : null}
       </div>
+
 
     </div>
   );
