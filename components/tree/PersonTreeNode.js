@@ -18,10 +18,14 @@ function PersonTreeNode({ data }) {
   const person = data.person;
   const photo = primaryMedia(person);
 
+  if (!person) return <div>null</div>;
+
   return (
     <div className="person-tree-node" style={{ width: NODE_WIDTH, position: 'relative', overflow: 'visible' }}>
 
-      <div className="person-node" style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
+      <div className="person-node" 
+        onClick={() => {data?.context.setPersonId(person.id)}}
+        style={{ width: NODE_WIDTH, background: '#fffaf2', border: '1px solid #dac8b5', borderRadius: 14, padding: 12, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative', boxSizing: 'border-box' }}>
         {/* Top handles: add both source and target variants so edges can bind whether node is a parent or a child */}
         <Handle type="source" position={Position.Top} id="top-source" style={handleStyle(data.hasTopHandle, '#7a4b2a', 10)} />
         <Handle type="target" position={Position.Top} id="top" style={handleStyle(data.hasTopHandle, '#365f48', 10)} />
@@ -56,14 +60,10 @@ function PersonTreeNode({ data }) {
         <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>
           <Link href={`/person/${person.id}`} style={{ color: '#2f2419', textDecoration: 'none' }}>
             {renderPersonSex(person)}
-            {renderPersonName(person?.name, person?.gedId || 'Unknown person')}
+            {renderPersonName(person?.name, person?.gedId || 'persona sconosciuta')}
             {renderPersonLifeDates(person)}
           </Link>
         </div>
-
-        <Link href={`/tree/person/${person.id}`} aria-label="Open interactive person tree" title="Open interactive person tree" className="tree-link">
-          🌳
-        </Link>
 
         {photo?.file ? <div style={{ clear: 'both' }} /> : null}
       </div>

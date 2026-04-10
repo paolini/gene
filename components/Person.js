@@ -15,7 +15,7 @@ const personTreeLinkStyle = {
 
 function PersonLink({ person }) {
   if (!person?.id) {
-    return renderPersonName(person?.name, 'Unknown person');
+    return renderPersonName(person?.name, 'persona sconosciuta');
   }
 
   return (
@@ -41,7 +41,7 @@ function PersonList({ people }) {
 function ParentsLine({ family }) {
   const parents = [family?.husband, family?.wife].filter(Boolean);
   if (parents.length === 0) {
-    return family?.gedId || 'Unknown parents';
+    return family?.gedId || 'genitori sconosciuti';
   }
 
   return parents.map((parent, index) => (
@@ -129,8 +129,8 @@ export default function Person({ person }) {
                   </div>
                   <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
                     {family.children?.length
-                      ? <span>Children: <PersonList people={family.children} /></span>
-                      : 'No children listed'}
+                      ? <span>Figli: <PersonList people={family.children} /></span>
+                      : 'nessun figlio elencato'}
                   </div>
                 </li>
               ))}

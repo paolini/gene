@@ -2,11 +2,26 @@ import Link from 'next/link';
 import { getSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import PersonTree from '../../../components/tree/PersonTree';
+import { usePersonCache } from '../../../components/tree/usePersonTree';
+import { useEffect, useState } from 'react';
 
 export default function PersonTreePage() {
   const router = useRouter();
   const { id } = router.query;
- 
+  const { getPerson } = usePersonCache();
+  const [personId, setPersonId] = useState(null);
+
+  useEffect(() => {
+    if (id) {
+      setPersonId(id);
+    }
+  }, [id]);
+
+  function changePerson(newPersonId) {
+    // setPersonId(newPersonId);
+    router.push(`/tree/person/${newPersonId}`, undefined, { shallow: true });
+  }
+
   return (
     <div style={{ padding: 20, fontFamily: 'Georgia, serif', background: 'linear-gradient(180deg, #efe5d5 0%, #faf6ef 100%)', minHeight: '100vh', color: '#2f2419' }}>
       <div style={{ maxWidth: 1500, margin: '0 auto' }}>
@@ -14,7 +29,10 @@ export default function PersonTreePage() {
           <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>← torna alla ricerca</Link>
           <div style={{ color: '#6d5a48' }}>Espandi i genitori o i discendenti da ogni scheda della persona.</div>
         </div>
-        <PersonTree personId={id} />
+        {personId 
+          ? <PersonTree personId={personId} setPersonId={changePerson} getPerson={getPerson} />
+          : <div>Caricamento...</div>
+        }
       </div>
     </div>
   );

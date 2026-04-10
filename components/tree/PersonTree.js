@@ -5,9 +5,10 @@ import { personTreeNodeTypes } from './PersonTreeNode';
 import { usePersonTree } from './usePersonTree';
 import { buildGraphModel } from '../../lib/personTreeLayout';
 
-export default function PersonTree({ personId }) {
-  const { loading, error, personTree } = usePersonTree(personId);
-  const graph = personTree ? buildGraphModel(personTree) : { nodes: [], edges: [] };
+export default function PersonTree({ personId, getPerson, setPersonId }) {
+  const { loading, error, personTree } = usePersonTree(personId, getPerson);
+  const context = { setPersonId };
+  const graph = personTree ? buildGraphModel(personTree, context) : { nodes: [], edges: [] };
 
   const edges = graph.edges 
   const nodes = graph.nodes 

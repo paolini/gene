@@ -164,12 +164,12 @@ const badgeStyle = {
 
 function formatDate(value) {
   if (!value) {
-    return 'Never';
+    return 'Mai';
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
+    return 'Sconosciuta';
   }
 
   return new Intl.DateTimeFormat('it-IT', {
