@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-3. Open http://localhost:3000
+4. Open http://localhost:3000
 
 Import process
 
@@ -213,3 +213,46 @@ docker compose exec app npm run migrate:up
 ```
 
 If deploying behind a public URL, also set `NEXTAUTH_URL` to the external base URL of the app.
+
+Encrypting user API keys (OpenAI)
+
+This project can store users' OpenAI keys encrypted at rest so the server can call OpenAI on their behalf. The encryption uses AES‑256‑GCM and requires a 32‑byte secret available to the server via the `API_KEYS_ENC_SECRET` environment variable.
+
+How to generate a secret (examples):
+
+```bash
+openssl rand -hex 32
+# put the output into .env.local as API_KEYS_ENC_SECRET=... (64 hex chars)
+```
+
+Requirements and notes:
+- Keep `API_KEYS_ENC_SECRET` safe and rotate it using your key management workflow (KMS is recommended for production).
+- Never commit the secret to the repository. Store it in your deployment secrets (Docker Compose env, cloud secret manager, etc.).
+- Example Docker Compose snippet:
+
+```yaml
+services:
+	app:
+		image: gene-tree
+		environment:
+			- MONGODB_URI=mongodb://mongo:27017/gene
+			- API_KEYS_ENC_SECRET=${API_KEYS_ENC_SECRET}
+```
+
+The app will encrypt user-provided OpenAI keys before saving them to the database and will decrypt them only when making server-side calls to OpenAI.
+
+HMAC fingerprint secret (compat/fallback)
+
+The server also optionally computes an HMAC fingerprint of the user's key for quick lookup or verification. This uses `API_KEYS_HASH_SECRET`. If present, the app will use HMAC-SHA256 to compute a fingerprint; if missing, createUserApiKey will fail.
+
+Generate a hash secret (example):
+
+```bash
+openssl rand -hex 32
+# add to .env.local as API_KEYS_HASH_SECRET=<64 hex chars>
+```
+
+Notes:
+- `API_KEYS_ENC_SECRET` is required for reversible encryption (AES‑GCM) so the server can call OpenAI on behalf of users.
+- `API_KEYS_HASH_SECRET` is required for computing the HMAC fingerprint; it should also decode to 32 bytes (64 hex chars) or be stored as base64 that decodes to 32 bytes.
+- Keep both secrets secure; prefer a KMS in production for key management and rotation.

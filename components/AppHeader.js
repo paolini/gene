@@ -94,6 +94,11 @@ function UserMenu() {
               Manage users
             </Link>
           ) : null}
+          {/* All authenticated users can manage their own keys */}
+          <Link href="/apikeys" style={buttonLikeStyle}>
+            Manage API keys
+          </Link>
+          {/* Admin/editor global page removed per request */}
           <button type="button" onClick={() => signOut()} style={buttonLikeStyle}>
             Sign out
           </button>

@@ -1,4 +1,5 @@
 const { GraphQLError } = require('graphql');
+const { DateTimeResolver } = require('graphql-scalars');
 const Person = require('../models/Person');
 const Family = require('../models/Family');
 const User = require('../models/User');
@@ -160,6 +161,8 @@ const typeDefs = /* GraphQL */ `
     notes: [String]
   }
 
+  scalar DateTime
+
   type AuthUser {
     id: ID!
     name: String
@@ -168,8 +171,8 @@ const typeDefs = /* GraphQL */ `
     role: String
     emailVerified: Boolean
     lastLoginAt: String
-    createdAt: String
-    updatedAt: String
+    createdAt: DateTime
+    updatedAt: DateTime
   }
 
   type UserInvitation {
@@ -182,11 +185,21 @@ const typeDefs = /* GraphQL */ `
     usedBy: AuthUser
     usedAt: String
     lastUsedBy: AuthUser
-    lastUsedAt: String
+    lastUsedAt: DateTime
     redemptionCount: Int!
     disabledAt: String
-    createdAt: String
-    updatedAt: String
+    createdAt: DateTime
+    updatedAt: DateTime
+  }
+
+  type ApiKeySummary {
+    id: ID!
+    name: String!
+    provider: String!
+    revoked: Boolean!
+    lastUsedAt: String
+    createdAt: DateTime
+    updatedAt: DateTime
   }
 
   type Query {
@@ -197,6 +210,7 @@ const typeDefs = /* GraphQL */ `
     currentUser: AuthUser
     users: [AuthUser]
     userInvitations: [UserInvitation!]!
+    userApiKeys: [ApiKeySummary!]!
   }
 
   input PersonInput {
@@ -214,10 +228,13 @@ const typeDefs = /* GraphQL */ `
     setUserInvitationActive(invitationId: ID!, isActive: Boolean!): UserInvitation!
     deleteUserInvitation(invitationId: ID!): ID!
     redeemUserInvitation(token: String!): UserInvitation!
+    createUserApiKey(provider: String!, key: String!, name: String): ApiKeySummary!
+    revokeUserApiKey(id: ID!): ID!
   }
 `;
 
 const resolvers = {
+  DateTime: DateTimeResolver,
   Person: {
     id: (parent) => resolveId(parent),
     fams: async (parent) => {
@@ -250,6 +267,9 @@ const resolvers = {
   UserInvitation: {
     id: (parent) => resolveId(parent)
   },
+  ApiKeySummary: {
+    id: (parent) => resolveId(parent)
+  },
   Query: {
     persons: async (_, __, context) => {
       requireAuthorizedRole(context, ['guest', 'editor', 'admin']);
@@ -274,19 +294,11 @@ const resolvers = {
 
       return User.findOne({ email: context.session.user.email }).lean();
     },
-    users: async (_, __, context) => {
-      requireAuthorizedRole(context, ['admin']);
-      return User.find().sort({ createdAt: 1, email: 1 }).lean();
-    },
-    userInvitations: async (_, __, context) => {
-      requireAuthorizedRole(context, ['admin']);
-
-      return UserInvitation.find()
-        .sort({ createdAt: -1 })
-        .populate('createdBy')
-        .populate('usedBy')
-        .populate('lastUsedBy')
-        .lean();
+    userApiKeys: async (_, __, context) => {
+      requireAuthenticatedUser(context);
+      // return user's non-revoked keys without sensitive ciphertext
+      const list = await require('../models/ApiKey').find({ owner: context.session.user.id, revoked: { $ne: true } }).select('-encryptedKey').lean();
+      return list;
     }
   },
   Mutation: {
@@ -371,6 +383,30 @@ const resolvers = {
     redeemUserInvitation: async (_, { token }, context) => {
       requireAuthenticatedUser(context);
       return redeemInvitationForUser(token, context.session.user.email);
+    }
+    ,
+    createUserApiKey: async (_, { provider, key, name }, context) => {
+      requireAuthenticatedUser(context);
+      if (provider !== 'openai') throw new Error('Unsupported provider');
+      const { encryptKey } = require('../lib/cryptoKeys');
+      const { hashKey } = require('../lib/apiKeyUtils');
+      const ciphertext = encryptKey(key);
+      const fingerprint = hashKey(key);
+      const ApiKey = require('../models/ApiKey');
+      const doc = await ApiKey.create({ name: name || `openai-${Date.now()}`, encryptedKey: ciphertext, provider: 'openai', owner: context.session.user.id, metadata: { fingerprint } });
+      const out = doc.toObject();
+      delete out.encryptedKey;
+      return out;
+    },
+    revokeUserApiKey: async (_, { id }, context) => {
+      requireAuthenticatedUser(context);
+      const ApiKey = require('../models/ApiKey');
+      const key = await ApiKey.findById(id);
+      if (!key) throw new Error('Key not found');
+      if (key.owner?.toString() !== context.session.user.id) requireAuthorizedRole(context, ['admin']);
+      key.revoked = true;
+      await key.save();
+      return id;
     }
   }
 };
