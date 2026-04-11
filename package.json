@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint || true",
     "start": "next start -p 3000",
     "import:ged": "node ./scripts/importGedcom.js",
     "invite:user": "node ./scripts/createUserInvitation.js",
@@ -26,6 +28,15 @@
     "reactflow": "11.11.4"
   },
   "devDependencies": {
-    "migrate-mongo": "^14.0.7"
+    "migrate-mongo": "^14.0.7",
+    "typescript": "^5.6.2",
+    "ts-node-dev": "^2.0.0",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.4.2",
+    "@types/react": "^18.2.28",
+    "@types/react-dom": "^18.2.11",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "eslint": "^8.50.0"
   }
 }
