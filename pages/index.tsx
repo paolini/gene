@@ -1,8 +1,17 @@
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
 import Person from '../components/Person';
 import { formatPersonNameText } from '../lib/personName';
+
+type PersonSummary = {
+  id: string;
+  name?: any;
+  gedId?: string | null;
+  birthDate?: string | null;
+  deathDate?: string | null;
+};
 
 const query = `
   query {
@@ -13,32 +22,16 @@ const query = `
       birthDate
       deathDate
       sex
-      media {
-        file
-        isPrimary
-        title
-      }
-      fams {
-        id
-        gedId
-        husband { id name }
-        wife { id name }
-        children { id name }
-      }
-      famc {
-        id
-        gedId
-        husband { id name }
-        wife { id name }
-        children { id name }
-      }
+      media { file isPrimary title }
+      fams { id gedId husband { id name } wife { id name } children { id name } }
+      famc { id gedId husband { id name } wife { id name } children { id name } }
     }
   }
 `;
 
-export default function Home() {
-  const [persons, setPersons] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+export default function Home(): JSX.Element {
+  const [persons, setPersons] = useState<PersonSummary[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   async function fetchPersons() {
     const res = await fetch('/api/graphql', {
@@ -92,8 +85,8 @@ export default function Home() {
   );
 }
 
-export async function getServerSideProps(context) {
-  const session = await getSession(context);
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getSession(context as any);
 
   if (!session) {
     return {
@@ -104,7 +97,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (!session.user?.role) {
+  if (!((session as any).user?.role)) {
     return {
       redirect: {
         destination: '/auth/pending',
@@ -114,4 +107,4 @@ export async function getServerSideProps(context) {
   }
 
   return { props: {} };
-}
+};

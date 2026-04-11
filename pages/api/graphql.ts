@@ -1,11 +1,11 @@
-const { createYoga, createSchema } = require('graphql-yoga');
-const { getServerSession } = require('next-auth/next');
-const { typeDefs, resolvers } = require('../../graphql/schema');
-const { authOptions } = require('../../lib/auth');
-const { connect } = require('../../lib/mongodb');
-const { setApiRequestLogContext, withApiRequestLogging } = require('../../lib/apiRequestLogger');
+import { createYoga, createSchema } from 'graphql-yoga';
+import { getServerSession } from 'next-auth/next';
+import { typeDefs, resolvers } from '../../graphql/schema';
+import { authOptions } from '../../lib/auth';
+import { connect } from '../../lib/mongodb';
+import { setApiRequestLogContext, withApiRequestLogging } from '../../lib/apiRequestLogger';
 
-let yoga;
+let yoga: any;
 
 async function getYoga() {
   if (!yoga) {
@@ -13,8 +13,8 @@ async function getYoga() {
     yoga = createYoga({
       schema: createSchema({ typeDefs, resolvers }),
       graphqlEndpoint: '/api/graphql',
-      context: async ({ req, res }) => {
-        const session = await getServerSession(req, res, authOptions);
+      context: async ({ req, res }: any) => {
+        const session = (await getServerSession(req, res, authOptions as any)) as any;
 
         setApiRequestLogContext(req, {
           userId: session?.user?.id || null,
@@ -30,7 +30,7 @@ async function getYoga() {
   return yoga;
 }
 
-async function handler(req, res) {
+async function handler(req: any, res: any) {
   const yogaHandler = await getYoga();
   return yogaHandler(req, res);
 }

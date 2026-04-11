@@ -1,7 +1,8 @@
+import React from 'react';
 import Link from 'next/link';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../lib/personName';
 
-const personTreeLinkStyle = {
+const personTreeLinkStyle: React.CSSProperties = {
   color: '#365f48',
   textDecoration: 'none',
   fontSize: 18,
@@ -13,9 +14,11 @@ const personTreeLinkStyle = {
   right: 20
 };
 
-function PersonLink({ person }) {
+type AnyPerson = any;
+
+function PersonLink({ person }: { person?: AnyPerson }) {
   if (!person?.id) {
-    return renderPersonName(person?.name, 'persona sconosciuta');
+    return <>{renderPersonName(person?.name, 'persona sconosciuta')}</>;
   }
 
   return (
@@ -25,37 +28,43 @@ function PersonLink({ person }) {
   );
 }
 
-function PersonList({ people }) {
+function PersonList({ people }: { people?: AnyPerson[] }) {
   if (!people || people.length === 0) {
-    return 'None listed';
+    return <>None listed</>;
   }
 
-  return people.map((person, index) => (
-    <span key={person.id || `${person.name}-${index}`}>
-      {index > 0 ? ', ' : ''}
-      <PersonLink person={person} />
-    </span>
-  ));
+  return (
+    <>
+      {people.map((person, index) => (
+        <span key={person.id || `${person.name}-${index}`}>
+          {index > 0 ? ', ' : ''}
+          <PersonLink person={person} />
+        </span>
+      ))}
+    </>
+  );
 }
 
-function ParentsLine({ family }) {
+function ParentsLine({ family }: { family?: AnyPerson }) {
   const parents = [family?.husband, family?.wife].filter(Boolean);
   if (parents.length === 0) {
-    return family?.gedId || 'genitori sconosciuti';
+    return <>{family?.gedId || 'genitori sconosciuti'}</>;
   }
 
-  return parents.map((parent, index) => (
-    <span key={parent.id || `${parent.name}-${index}`}>
-      {index > 0 ? ' and ' : ''}
-      <PersonLink person={parent} />
-    </span>
-  ));
+  return (
+    <>
+      {parents.map((parent, index) => (
+        <span key={parent.id || `${parent.name}-${index}`}>
+          {index > 0 ? ' and ' : ''}
+          <PersonLink person={parent} />
+        </span>
+      ))}
+    </>
+  );
 }
 
-export default function Person({ person }) {
-  if (!person) {
-    return null;
-  }
+export default function Person({ person }: { person?: AnyPerson }) {
+  if (!person) return null;
 
   const hasMedia = Boolean(person.media?.length);
 
@@ -75,7 +84,7 @@ export default function Person({ person }) {
       {hasMedia ? (
         <section style={{ float: 'left', marginRight: 20, marginBottom: 16 }}>
           <div style={{ display: 'grid', gap: 12, alignItems: 'flex-start' }}>
-            {person.media.map((item, index) => (
+            {person.media.map((item: any, index: number) => (
               <a
                 key={`${item.file}-${index}`}
                 href={item.file}
@@ -105,13 +114,13 @@ export default function Person({ person }) {
         <section>
           {person.famc?.length ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {person.famc.map((family) => (
+              {person.famc.map((family: any) => (
                 <li key={family.id} style={{ marginBottom: 10 }}>
                   <div>
                     Genitori: <ParentsLine family={family} />
                   </div>
                   <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
-                    Fratelli: <PersonList people={(family.children || []).filter((child) => child.id !== person.id)} />
+                    Fratelli: <PersonList people={(family.children || []).filter((child: any) => child.id !== person.id)} />
                   </div>
                 </li>
               ))}
@@ -122,10 +131,10 @@ export default function Person({ person }) {
         <section>
           {person.fams?.length ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {person.fams.map((family) => (
+              {person.fams.map((family: any) => (
                 <li key={family.id} style={{ marginBottom: 10 }}>
                   <div>
-                    Coniuge: <PersonLink person={[family.husband, family.wife].find((candidate) => candidate && candidate.id !== person.id)} />
+                    Coniuge: <PersonLink person={[family.husband, family.wife].find((candidate: any) => candidate && candidate.id !== person.id)} />
                   </div>
                   <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
                     {family.children?.length

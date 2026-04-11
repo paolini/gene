@@ -1,88 +1,61 @@
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+
+type User = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: string | null;
+  emailVerified?: boolean;
+  lastLoginAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+type Invitation = {
+  id: string;
+  token: string;
+  role: string;
+  isReusable: boolean;
+  isActive: boolean;
+  createdAt?: string | null;
+  usedAt?: string | null;
+  lastUsedAt?: string | null;
+  redemptionCount?: number;
+  disabledAt?: string | null;
+  createdBy?: { id: string; name?: string; email?: string } | null;
+  usedBy?: { id: string; name?: string; email?: string } | null;
+  lastUsedBy?: { id: string; name?: string; email?: string } | null;
+};
 
 const usersQuery = `
   query AdminUsers {
-    users {
-      id
-      name
-      email
-      image
-      role
-      emailVerified
-      lastLoginAt
-      createdAt
-      updatedAt
-    }
+    users { id name email image role emailVerified lastLoginAt createdAt updatedAt }
     userInvitations {
-      id
-      token
-      role
-      isReusable
-      isActive
-      createdAt
-      usedAt
-      lastUsedAt
-      redemptionCount
-      disabledAt
-      createdBy {
-        id
-        name
-        email
-      }
-      usedBy {
-        id
-        name
-        email
-      }
-      lastUsedBy {
-        id
-        name
-        email
-      }
+      id token role isReusable isActive createdAt usedAt lastUsedAt redemptionCount disabledAt
+      createdBy { id name email }
+      usedBy { id name email }
+      lastUsedBy { id name email }
     }
   }
 `;
 
 const setUserRoleMutation = `
   mutation SetUserRole($userId: ID!, $role: String) {
-    setUserRole(userId: $userId, role: $role) {
-      id
-      role
-      updatedAt
-    }
+    setUserRole(userId: $userId, role: $role) { id role updatedAt }
   }
 `;
 
 const createInvitationMutation = `
   mutation CreateUserInvitation($role: String!, $isReusable: Boolean) {
     createUserInvitation(role: $role, isReusable: $isReusable) {
-      id
-      token
-      role
-      isReusable
-      isActive
-      createdAt
-      usedAt
-      lastUsedAt
-      redemptionCount
-      disabledAt
-      createdBy {
-        id
-        name
-        email
-      }
-      usedBy {
-        id
-        name
-        email
-      }
-      lastUsedBy {
-        id
-        name
-        email
-      }
+      id token role isReusable isActive createdAt usedAt lastUsedAt redemptionCount disabledAt
+      createdBy { id name email }
+      usedBy { id name email }
+      lastUsedBy { id name email }
     }
   }
 `;
@@ -90,31 +63,10 @@ const createInvitationMutation = `
 const setInvitationActiveMutation = `
   mutation SetUserInvitationActive($invitationId: ID!, $isActive: Boolean!) {
     setUserInvitationActive(invitationId: $invitationId, isActive: $isActive) {
-      id
-      token
-      role
-      isReusable
-      isActive
-      createdAt
-      usedAt
-      lastUsedAt
-      redemptionCount
-      disabledAt
-      createdBy {
-        id
-        name
-        email
-      }
-      usedBy {
-        id
-        name
-        email
-      }
-      lastUsedBy {
-        id
-        name
-        email
-      }
+      id token role isReusable isActive createdAt usedAt lastUsedAt redemptionCount disabledAt
+      createdBy { id name email }
+      usedBy { id name email }
+      lastUsedBy { id name email }
     }
   }
 `;
@@ -125,7 +77,7 @@ const deleteInvitationMutation = `
   }
 `;
 
-const pageStyle = {
+const pageStyle: React.CSSProperties = {
   minHeight: '100vh',
   padding: 24,
   fontFamily: 'Georgia, serif',
@@ -133,7 +85,7 @@ const pageStyle = {
   color: '#2f2419'
 };
 
-const panelStyle = {
+const panelStyle: React.CSSProperties = {
   background: '#fffaf2',
   border: '1px solid #e2d5c3',
   borderRadius: 20,
@@ -141,7 +93,7 @@ const panelStyle = {
   boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)'
 };
 
-const selectStyle = {
+const selectStyle: React.CSSProperties = {
   padding: '8px 10px',
   border: '1px solid #c9b79f',
   borderRadius: 8,
@@ -150,7 +102,7 @@ const selectStyle = {
   fontFamily: 'inherit'
 };
 
-const badgeStyle = {
+const badgeStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   borderRadius: 999,
@@ -162,38 +114,29 @@ const badgeStyle = {
   letterSpacing: '0.06em'
 };
 
-function formatDate(value) {
-  if (!value) {
-    return 'Mai';
-  }
-
+function formatDate(value?: string | null) {
+  if (!value) return 'Mai';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Sconosciuta';
-  }
-
-  return new Intl.DateTimeFormat('it-IT', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(date);
+  if (Number.isNaN(date.getTime())) return 'Sconosciuta';
+  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-function roleValue(role) {
+function roleValue(role?: string | null) {
   return role || '';
 }
 
-export default function AdminUsersPage() {
-  const [users, setUsers] = useState([]);
-  const [invitations, setInvitations] = useState([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [savingUserId, setSavingUserId] = useState('');
-  const [inviteRole, setInviteRole] = useState('guest');
-  const [inviteReusable, setInviteReusable] = useState(false);
-  const [creatingInvitation, setCreatingInvitation] = useState(false);
-  const [togglingInvitationId, setTogglingInvitationId] = useState('');
-  const [deletingInvitationId, setDeletingInvitationId] = useState('');
-  const [latestInviteUrl, setLatestInviteUrl] = useState('');
+export default function AdminUsersPage(): JSX.Element {
+  const [users, setUsers] = useState<User[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [savingUserId, setSavingUserId] = useState<string>('');
+  const [inviteRole, setInviteRole] = useState<string>('guest');
+  const [inviteReusable, setInviteReusable] = useState<boolean>(false);
+  const [creatingInvitation, setCreatingInvitation] = useState<boolean>(false);
+  const [togglingInvitationId, setTogglingInvitationId] = useState<string>('');
+  const [deletingInvitationId, setDeletingInvitationId] = useState<string>('');
+  const [latestInviteUrl, setLatestInviteUrl] = useState<string>('');
 
   async function fetchUsers() {
     setLoading(true);
@@ -218,11 +161,8 @@ export default function AdminUsersPage() {
     setLoading(false);
   }
 
-  function buildInviteUrl(token) {
-    if (typeof window === 'undefined') {
-      return '';
-    }
-
+  function buildInviteUrl(token: string) {
+    if (typeof window === 'undefined') return '';
     return `${window.location.origin}/invite/${token}`;
   }
 
@@ -233,10 +173,7 @@ export default function AdminUsersPage() {
     const response = await fetch('/api/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: createInvitationMutation,
-        variables: { role: inviteRole, isReusable: inviteReusable }
-      })
+      body: JSON.stringify({ query: createInvitationMutation, variables: { role: inviteRole, isReusable: inviteReusable } })
     });
     const json = await response.json();
 
@@ -246,26 +183,20 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const invitation = json.data?.createUserInvitation;
+    const invitation: Invitation = json.data?.createUserInvitation;
     setInvitations((currentInvitations) => [invitation, ...currentInvitations]);
     setLatestInviteUrl(buildInviteUrl(invitation.token));
     setCreatingInvitation(false);
   }
 
-  async function handleToggleInvitation(invitationId, isActive) {
+  async function handleToggleInvitation(invitationId: string, isActive: boolean) {
     setTogglingInvitationId(invitationId);
     setError('');
 
     const response = await fetch('/api/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: setInvitationActiveMutation,
-        variables: {
-          invitationId,
-          isActive
-        }
-      })
+      body: JSON.stringify({ query: setInvitationActiveMutation, variables: { invitationId, isActive } })
     });
     const json = await response.json();
 
@@ -275,13 +206,11 @@ export default function AdminUsersPage() {
       return;
     }
 
-    setInvitations((currentInvitations) => currentInvitations.map((invitation) => (
-      invitation.id === invitationId ? json.data?.setUserInvitationActive : invitation
-    )));
+    setInvitations((currentInvitations) => currentInvitations.map((inv) => (inv.id === invitationId ? json.data?.setUserInvitationActive : inv)));
     setTogglingInvitationId('');
   }
 
-  async function handleCopyInvite(url) {
+  async function handleCopyInvite(url: string) {
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -289,17 +218,14 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleDeleteInvitation(invitationId) {
+  async function handleDeleteInvitation(invitationId: string) {
     setDeletingInvitationId(invitationId);
     setError('');
 
     const response = await fetch('/api/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: deleteInvitationMutation,
-        variables: { invitationId }
-      })
+      body: JSON.stringify({ query: deleteInvitationMutation, variables: { invitationId } })
     });
     const json = await response.json();
 
@@ -309,28 +235,20 @@ export default function AdminUsersPage() {
       return;
     }
 
-    setInvitations((currentInvitations) => currentInvitations.filter((invitation) => invitation.id !== invitationId));
+    setInvitations((currentInvitations) => currentInvitations.filter((inv) => inv.id !== invitationId));
     setDeletingInvitationId('');
   }
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
-  async function handleRoleChange(userId, nextRole) {
+  async function handleRoleChange(userId: string, nextRole?: string | null) {
     setSavingUserId(userId);
     setError('');
 
     const response = await fetch('/api/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: setUserRoleMutation,
-        variables: {
-          userId,
-          role: nextRole || null
-        }
-      })
+      body: JSON.stringify({ query: setUserRoleMutation, variables: { userId, role: nextRole || null } })
     });
     const json = await response.json();
 
@@ -342,11 +260,7 @@ export default function AdminUsersPage() {
 
     setUsers((currentUsers) => currentUsers.map((user) => (
       user.id === userId
-        ? {
-            ...user,
-            role: json.data?.setUserRole?.role || null,
-            updatedAt: json.data?.setUserRole?.updatedAt || user.updatedAt
-          }
+        ? { ...user, role: json.data?.setUserRole?.role || null, updatedAt: json.data?.setUserRole?.updatedAt || user.updatedAt }
         : user
     )));
     setSavingUserId('');
@@ -356,17 +270,13 @@ export default function AdminUsersPage() {
     <div style={pageStyle}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: 20 }}>
-          <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-            ← Indietro alla home
-          </Link>
+          <Link href="/" style={{ color: '#7a4b2a', textDecoration: 'none' }}>← Indietro alla home</Link>
         </div>
 
         <section style={panelStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 24 }}>
             <div>
-              <div style={{ fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8a735d', marginBottom: 8 }}>
-                Administration
-              </div>
+              <div style={{ fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8a735d', marginBottom: 8 }}>Administration</div>
               <h1 style={{ margin: '0 0 8px', fontSize: 34 }}>User management</h1>
               <p style={{ margin: 0, color: '#6d5a48', lineHeight: 1.6, maxWidth: 720 }}>
                 Assign or revoke explicit roles for authenticated users. Accounts without a role remain blocked on the pending access page.
@@ -378,35 +288,23 @@ export default function AdminUsersPage() {
           <div style={{ border: '1px solid #e2d5c3', borderRadius: 16, padding: 16, background: '#fffdf8', marginBottom: 24, display: 'grid', gap: 14 }}>
             <div>
               <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6 }}>Invite links</div>
-              <p style={{ margin: 0, color: '#6d5a48', lineHeight: 1.5 }}>
-                Generate a one-time invitation link that assigns a role to the first authenticated account that redeems it.
-              </p>
+              <p style={{ margin: 0, color: '#6d5a48', lineHeight: 1.5 }}>Generate a one-time invitation link that assigns a role to the first authenticated account that redeems it.</p>
             </div>
 
             <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
               <label style={{ display: 'grid', gap: 8 }}>
                 <span style={{ fontSize: 13, color: '#7b6a59' }}>Role for new user</span>
-                <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} disabled={creatingInvitation} style={selectStyle}>
+                <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} disabled={creatingInvitation} style={selectStyle}>
                   <option value="guest">Guest</option>
                   <option value="editor">Editor</option>
                   <option value="admin">Admin</option>
                 </select>
               </label>
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#6d5a48', paddingBottom: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={inviteReusable}
-                  onChange={(event) => setInviteReusable(event.target.checked)}
-                  disabled={creatingInvitation}
-                />
+                <input type="checkbox" checked={inviteReusable} onChange={(e) => setInviteReusable(e.target.checked)} disabled={creatingInvitation} />
                 Reusable link
               </label>
-              <button
-                type="button"
-                onClick={handleCreateInvitation}
-                disabled={creatingInvitation}
-                style={{ ...selectStyle, cursor: creatingInvitation ? 'default' : 'pointer', minWidth: 150 }}
-              >
+              <button type="button" onClick={handleCreateInvitation} disabled={creatingInvitation} style={{ ...selectStyle, cursor: creatingInvitation ? 'default' : 'pointer', minWidth: 150 }}>
                 {creatingInvitation ? 'Creating...' : 'Create invite link'}
               </button>
             </div>
@@ -416,9 +314,7 @@ export default function AdminUsersPage() {
                 <span style={{ fontSize: 13, color: '#7b6a59' }}>Latest invite link</span>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input readOnly value={latestInviteUrl} style={{ ...selectStyle, minWidth: 'min(100%, 520px)', flex: '1 1 320px' }} />
-                  <button type="button" onClick={() => handleCopyInvite(latestInviteUrl)} style={{ ...selectStyle, cursor: 'pointer' }}>
-                    Copy
-                  </button>
+                  <button type="button" onClick={() => handleCopyInvite(latestInviteUrl)} style={{ ...selectStyle, cursor: 'pointer' }}>Copy</button>
                 </div>
               </div>
             ) : null}
@@ -427,7 +323,6 @@ export default function AdminUsersPage() {
               <div style={{ display: 'grid', gap: 10 }}>
                 {invitations.map((invitation) => {
                   const inviteUrl = buildInviteUrl(invitation.token);
-
                   return (
                     <div key={invitation.id} style={{ border: '1px solid #eadcca', borderRadius: 12, padding: 12, display: 'grid', gap: 8 }}>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -435,47 +330,15 @@ export default function AdminUsersPage() {
                         <span style={badgeStyle}>{invitation.isReusable ? 'reusable' : 'one-time'}</span>
                         <span style={badgeStyle}>{invitation.isActive ? 'active' : 'disabled'}</span>
                         <span style={{ fontSize: 13, color: '#7b6a59' }}>Created: {formatDate(invitation.createdAt)}</span>
-                        <span style={{ fontSize: 13, color: invitation.isActive ? '#2f6b45' : '#8b2d2d' }}>
-                          {invitation.isActive ? 'Enabled' : `Disabled: ${formatDate(invitation.disabledAt)}`}
-                        </span>
-                        <span style={{ fontSize: 13, color: '#6d5a48' }}>
-                          Redeemed: {invitation.redemptionCount}
-                        </span>
-                        <span style={{ fontSize: 13, color: '#7b6a59' }}>
-                          {invitation.isReusable
-                            ? (invitation.lastUsedAt
-                              ? `Last use by ${invitation.lastUsedBy?.name || invitation.lastUsedBy?.email || 'unknown user'} on ${formatDate(invitation.lastUsedAt)}`
-                              : 'Not used yet')
-                            : (invitation.usedAt
-                              ? `Used by ${invitation.usedBy?.name || invitation.usedBy?.email || 'unknown user'} on ${formatDate(invitation.usedAt)}`
-                              : 'Not used yet')}
-                        </span>
+                        <span style={{ fontSize: 13, color: invitation.isActive ? '#2f6b45' : '#8b2d2d' }}>{invitation.isActive ? 'Enabled' : `Disabled: ${formatDate(invitation.disabledAt)}`}</span>
+                        <span style={{ fontSize: 13, color: '#6d5a48' }}>Redeemed: {invitation.redemptionCount}</span>
+                        <span style={{ fontSize: 13, color: '#7b6a59' }}>{invitation.isReusable ? (invitation.lastUsedAt ? `Last use by ${invitation.lastUsedBy?.name || invitation.lastUsedBy?.email || 'unknown user'} on ${formatDate(invitation.lastUsedAt)}` : 'Not used yet') : (invitation.usedAt ? `Used by ${invitation.usedBy?.name || invitation.usedBy?.email || 'unknown user'} on ${formatDate(invitation.usedAt)}` : 'Not used yet')}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <input readOnly value={inviteUrl} style={{ ...selectStyle, minWidth: 'min(100%, 520px)', flex: '1 1 320px', opacity: invitation.isActive ? 1 : 0.65 }} />
-                        <button type="button" onClick={() => handleCopyInvite(inviteUrl)} disabled={!inviteUrl} style={{ ...selectStyle, cursor: 'pointer' }}>
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleInvitation(invitation.id, !invitation.isActive)}
-                          disabled={togglingInvitationId === invitation.id || deletingInvitationId === invitation.id}
-                          style={{ ...selectStyle, cursor: 'pointer' }}
-                        >
-                          {togglingInvitationId === invitation.id
-                            ? 'Saving...'
-                            : invitation.isActive
-                              ? 'Disable'
-                              : 'Enable'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteInvitation(invitation.id)}
-                          disabled={togglingInvitationId === invitation.id || deletingInvitationId === invitation.id}
-                          style={{ ...selectStyle, cursor: 'pointer', borderColor: '#d9b3a9', color: '#8b2d2d' }}
-                        >
-                          {deletingInvitationId === invitation.id ? 'Deleting...' : 'Delete'}
-                        </button>
+                        <button type="button" onClick={() => handleCopyInvite(inviteUrl)} disabled={!inviteUrl} style={{ ...selectStyle, cursor: 'pointer' }}>Copy</button>
+                        <button type="button" onClick={() => handleToggleInvitation(invitation.id, !invitation.isActive)} disabled={togglingInvitationId === invitation.id || deletingInvitationId === invitation.id} style={{ ...selectStyle, cursor: 'pointer' }}>{togglingInvitationId === invitation.id ? 'Saving...' : invitation.isActive ? 'Disable' : 'Enable'}</button>
+                        <button type="button" onClick={() => handleDeleteInvitation(invitation.id)} disabled={togglingInvitationId === invitation.id || deletingInvitationId === invitation.id} style={{ ...selectStyle, cursor: 'pointer', borderColor: '#d9b3a9', color: '#8b2d2d' }}>{deletingInvitationId === invitation.id ? 'Deleting...' : 'Delete'}</button>
                       </div>
                     </div>
                   );
@@ -491,15 +354,12 @@ export default function AdminUsersPage() {
             <div style={{ display: 'grid', gap: 12 }}>
               {users.map((user) => {
                 const isSaving = savingUserId === user.id;
-
                 return (
                   <article key={user.id} style={{ border: '1px solid #e2d5c3', borderRadius: 16, padding: 16, background: '#fffdf8' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(180px, 220px)', gap: 16, alignItems: 'center' }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                          {user.image ? (
-                            <img src={user.image} alt={user.name || user.email || 'User avatar'} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '1px solid #d7c6b2' }} />
-                          ) : null}
+                          {user.image ? <img src={user.image} alt={user.name || user.email || 'User avatar'} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '1px solid #d7c6b2' }} /> : null}
                           <div>
                             <div style={{ fontSize: 20, fontWeight: 600, overflowWrap: 'anywhere' }}>{user.name || 'Unnamed user'}</div>
                             <div style={{ color: '#6d5a48', overflowWrap: 'anywhere' }}>{user.email}</div>
@@ -515,12 +375,7 @@ export default function AdminUsersPage() {
 
                       <label style={{ display: 'grid', gap: 8, justifyItems: 'start' }}>
                         <span style={{ fontSize: 13, color: '#7b6a59' }}>Role</span>
-                        <select
-                          value={roleValue(user.role)}
-                          onChange={(event) => handleRoleChange(user.id, event.target.value)}
-                          disabled={isSaving}
-                          style={selectStyle}
-                        >
+                        <select value={roleValue(user.role)} onChange={(e) => handleRoleChange(user.id, e.target.value)} disabled={isSaving} style={selectStyle}>
                           <option value="">Pending</option>
                           <option value="guest">Guest</option>
                           <option value="editor">Editor</option>
@@ -539,8 +394,8 @@ export default function AdminUsersPage() {
   );
 }
 
-export async function getServerSideProps(context) {
-  const session = await getSession(context);
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getSession(context as any);
 
   if (!session) {
     return {
@@ -551,23 +406,15 @@ export async function getServerSideProps(context) {
     };
   }
 
-  if (!session.user?.role) {
-    return {
-      redirect: {
-        destination: '/auth/pending',
-        permanent: false
-      }
-    };
+  // `next-auth` Session type doesn't include our custom `role` field.
+  // Cast to `any` to read the application-specific `user.role` safely.
+  if (!((session as any).user?.role)) {
+    return { redirect: { destination: '/auth/pending', permanent: false } };
   }
 
-  if (session.user.role !== 'admin') {
-    return {
-      redirect: {
-        destination: '/',
-        permanent: false
-      }
-    };
+  if ((session as any).user.role !== 'admin') {
+    return { redirect: { destination: '/', permanent: false } };
   }
 
   return { props: {} };
-}
+};
