@@ -14,6 +14,7 @@ const PersonSchema = new mongoose.Schema({
   sex: String,
   birthDate: String,
   deathDate: String,
+  events: { type: Object, default: {} },
   media: { type: [PersonMediaSchema], default: [] },
   fams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Family' }],
   famc: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Family' }]

@@ -119,6 +119,8 @@ function parseGedcom(content) {
   }
   if (cur) records.push(cur);
 
+  throw new Error("stop here")
+
   const individuals = {};
   const families = {};
   const unknownLines = [];
@@ -278,14 +280,20 @@ function parseGedcom(content) {
   return { individuals, families };
 }
 
-async function run({ dry, json, fileArg }) {
+async function run({ dry, json, fileArg, wipe }) {
+  console.log(`[import] Starting GEDCOM import with file: ${fileArg}, options: ${JSON.stringify({ dry, json, wipe })}`);
   try {
     if (!fs.existsSync(fileArg)) {
-      console.error('GEDCOM file not found:', fileArg);
-      process.exit(1);
+      const msg = `\x1b[31m[ERRORE] GEDCOM file non trovato: ${fileArg}\x1b[0m\n\x1b[33mAssicurati che il file sia nel percorso corretto o specifica il path completo.\x1b[0m`;
+      console.error(msg);
+      throw new Error(msg);
+    } else {
+      console.log(`[import] GEDCOM file trovato: ${fileArg}`);
     }
     const content = fs.readFileSync(fileArg, 'utf8');
+    console.log(`[import] Lettura file GEDCOM completata (${fileArg}).`);
     const parsed = parseGedcom(content);
+    console.log(`[import] Parsing GEDCOM completato: trovate ${Object.keys(parsed.individuals).length} persone e ${Object.keys(parsed.families).length} famiglie.`);
 
     if (json) {
       console.warn('Outputting JSON to stdout.');
@@ -298,6 +306,8 @@ async function run({ dry, json, fileArg }) {
       return;
     }
 
+    // Validazione relazioni e linee sconosciute già eseguita in parseGedcom
+    console.log('[import] Validazione GEDCOM completata.');
     // Try to connect to MongoDB and import
     const conn = await connect();
     if (!conn) {
@@ -305,7 +315,15 @@ async function run({ dry, json, fileArg }) {
       return;
     }
 
+    if (wipe) {
+      console.log('Cancellazione di tutte le persone e famiglie dal database...');
+      await Person.deleteMany({});
+      await Family.deleteMany({});
+      console.log('Database pulito.');
+    }
+
     const gedToPersonId = {};
+    console.log(`[import] Inizio importazione di ${Object.keys(parsed.individuals).length} persone...`);
     for (const gedId of Object.keys(parsed.individuals)) {
       const i = parsed.individuals[gedId];
       const doc = await Person.findOneAndUpdate({ gedId }, {
@@ -314,15 +332,21 @@ async function run({ dry, json, fileArg }) {
         sex: i.sex,
         birthDate: i.events && i.events.BIRT && i.events.BIRT.date ? i.events.BIRT.date : undefined,
         deathDate: i.events && i.events.DEAT && i.events.DEAT.date ? i.events.DEAT.date : undefined,
+        events: i.events || {},
         media: (i.media || []).filter((entry) => entry.file),
         fams: [],
         famc: [],
         raw: i.raw
       }, { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true });
       gedToPersonId[gedId] = doc._id;
+      if ((Object.keys(gedToPersonId).length % 100) === 0) {
+        console.log(`[import] Persone importate finora: ${Object.keys(gedToPersonId).length}`);
+      }
     }
+    console.log(`[import] Importazione persone completata: ${Object.keys(gedToPersonId).length}`);
 
     const gedToFamilyId = {};
+    console.log(`[import] Inizio importazione di ${Object.keys(parsed.families).length} famiglie...`);
     for (const gedId of Object.keys(parsed.families)) {
       const f = parsed.families[gedId];
       const husbandId = f.husband ? gedToPersonId[f.husband] || null : null;
@@ -337,7 +361,11 @@ async function run({ dry, json, fileArg }) {
         raw: f.raw
       }, { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true });
       gedToFamilyId[gedId] = famDoc._id;
+      if ((Object.keys(gedToFamilyId).length % 50) === 0) {
+        console.log(`[import] Famiglie importate finora: ${Object.keys(gedToFamilyId).length}`);
+      }
     }
+    console.log(`[import] Importazione famiglie completata: ${Object.keys(gedToFamilyId).length}`);
 
     for (const gedId of Object.keys(parsed.individuals)) {
       const i = parsed.individuals[gedId];

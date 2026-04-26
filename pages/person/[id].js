@@ -13,6 +13,14 @@ const personQuery = `
       birthDate
       deathDate
       sex
+      events {
+        BIRT { date place }
+        DEAT { date place }
+        MARR { date place }
+        DIV { date place }
+        BURI { date place }
+        BAPM { date place }
+      }
       media {
         file
         format

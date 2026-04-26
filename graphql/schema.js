@@ -146,6 +146,7 @@ const typeDefs = /* GraphQL */ `
     sex: String
     birthDate: String
     deathDate: String
+    events: Events
     media: [PersonMedia!]!
     fams: [Family]
     famc: [Family]
@@ -240,6 +241,7 @@ const typeDefs = /* GraphQL */ `
     redeemUserInvitation(token: String!): UserInvitation!
     createUserApiKey(provider: String!, key: String!, name: String): ApiKeySummary!
     revokeUserApiKey(id: ID!): ID!
+    callUserApiKeyChat(keyId: ID!, messages: [ChatMessageInput!]!): String!
   }
 `;
 
@@ -247,6 +249,7 @@ const resolvers = {
   DateTime: DateTimeResolver,
   Person: {
     id: (parent) => resolveId(parent),
+    events: (parent) => parent.events || {},
     fams: async (parent) => {
       if (!parent.fams || parent.fams.length === 0) {
         return [];
@@ -417,6 +420,51 @@ const resolvers = {
       key.revoked = true;
       await key.save();
       return id;
+    }
+    ,
+    callUserApiKeyChat: async (_, { keyId, messages }, context) => {
+      requireAuthenticatedUser(context);
+      if (!Array.isArray(messages) || messages.length === 0 || !keyId) throw new Error('Missing messages or keyId');
+
+      const ApiKey = require('../models/ApiKey');
+      const { decryptKey } = require('../lib/cryptoKeys');
+      const { connect } = require('../lib/mongodb');
+
+      await connect();
+      const ak = await ApiKey.findOne({ _id: keyId, owner: context.session.user.id, revoked: false }).select('+encryptedKey').lean();
+      if (!ak) throw new GraphQLError('ApiKey not found', { extensions: { code: 'NOT_FOUND' } });
+
+      let plain;
+      try {
+        plain = decryptKey(ak.encryptedKey);
+      } catch (e) {
+        throw new GraphQLError('Failed to decrypt key');
+      }
+
+      // map messages to OpenAI format
+      const mapped = messages.map(m => ({ role: m.role, content: m.content }));
+
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${plain}`,
+        },
+        body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: mapped, max_tokens: 800 }),
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new GraphQLError('Upstream error: ' + txt);
+      }
+
+      const body = await resp.json();
+      const reply = body.choices?.[0]?.message?.content || '';
+
+      // update lastUsedAt async
+      ApiKey.updateOne({ _id: keyId }, { $set: { lastUsedAt: new Date() } }).catch(() => {});
+
+      return reply;
     }
   }
 };

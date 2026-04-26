@@ -1,5 +1,42 @@
+
 import Link from 'next/link';
 import { formatPersonNameText, renderPersonLifeDates, renderPersonName, renderPersonSex } from '../lib/personName';
+
+// Link a una persona
+function PersonLink({ person }) {
+  if (!person) return <span style={{ color: '#aaa' }}>?</span>;
+  return (
+    <Link href={`/person/${person.id}`} style={{ color: '#365f48', textDecoration: 'underline' }}>
+      {renderPersonName(person.name, 'Persona')}
+    </Link>
+  );
+}
+
+// Lista di persone
+function PersonList({ people }) {
+  if (!people?.length) return <span style={{ color: '#aaa' }}>–</span>;
+  return (
+    <span>
+      {people.map((p, i) => (
+        <span key={p.id}>
+          <PersonLink person={p} />{i < people.length - 1 ? ', ' : ''}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// Riga genitori
+function ParentsLine({ family }) {
+  if (!family) return <span style={{ color: '#aaa' }}>?</span>;
+  return (
+    <span>
+      <PersonLink person={family.husband} />
+      {' + '}
+      <PersonLink person={family.wife} />
+    </span>
+  );
+}
 
 const personTreeLinkStyle = {
   color: '#365f48',
@@ -13,51 +50,21 @@ const personTreeLinkStyle = {
   right: 20
 };
 
-function PersonLink({ person }) {
-  if (!person?.id) {
-    return renderPersonName(person?.name, 'persona sconosciuta');
-  }
-
-  return (
-    <Link href={`/person/${person.id}`} style={{ color: '#7a4b2a', textDecoration: 'none' }}>
-      {renderPersonName(person.name, person.id)}
-    </Link>
-  );
-}
-
-function PersonList({ people }) {
-  if (!people || people.length === 0) {
-    return 'None listed';
-  }
-
-  return people.map((person, index) => (
-    <span key={person.id || `${person.name}-${index}`}>
-      {index > 0 ? ', ' : ''}
-      <PersonLink person={person} />
-    </span>
-  ));
-}
-
-function ParentsLine({ family }) {
-  const parents = [family?.husband, family?.wife].filter(Boolean);
-  if (parents.length === 0) {
-    return family?.gedId || 'genitori sconosciuti';
-  }
-
-  return parents.map((parent, index) => (
-    <span key={parent.id || `${parent.name}-${index}`}>
-      {index > 0 ? ' and ' : ''}
-      <PersonLink person={parent} />
-    </span>
-  ));
-}
-
 export default function Person({ person }) {
   if (!person) {
     return null;
   }
 
   const hasMedia = Boolean(person.media?.length);
+  const events = person.events || {};
+  const eventLabels = {
+    BIRT: 'Nascita',
+    DEAT: 'Morte',
+    MARR: 'Matrimonio',
+    DIV: 'Divorzio',
+    BURI: 'Sepoltura',
+    BAPM: 'Battesimo'
+  };
 
   return (
     <article style={{ background: '#fffaf2', border: '1px solid #e2d5c3', borderRadius: 20, padding: 24, boxShadow: '0 8px 24px rgba(78, 53, 32, 0.08)', position: 'relative' }}>
@@ -71,6 +78,26 @@ export default function Person({ person }) {
           {renderPersonLifeDates(person)}
         </h3>
       </header>
+
+      {/* Eventi principali */}
+      {Object.keys(events).length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <h4 style={{ fontSize: 18, margin: '0 0 8px 0', color: '#7a4b2a' }}>Eventi</h4>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 15 }}>
+            {Object.entries(eventLabels).map(([key, label]) => {
+              const ev = events[key];
+              if (!ev || (!ev.date && !ev.place)) return null;
+              return (
+                <li key={key} style={{ marginBottom: 4 }}>
+                  <strong>{label}:</strong>
+                  {ev.date ? ` ${ev.date}` : ''}
+                  {ev.place ? ` (${ev.place})` : ''}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {hasMedia ? (
         <section style={{ float: 'left', marginRight: 20, marginBottom: 16 }}>
