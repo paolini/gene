@@ -57,6 +57,9 @@ export default function ApiKeysPage() {
     <div style={{ padding: 24, maxWidth: 900, margin: '48px auto' }}>
       <h1>API keys</h1>
       <p>Manage your personal API keys for LLM providers.</p>
+      <p>
+        <Link href="/apikey-chat">Chat using a stored key</Link>
+      </p>
 
       <div style={{ margin: '16px 0' }}>
         <div style={{ marginBottom: 8 }}>

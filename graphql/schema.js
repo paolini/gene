@@ -202,6 +202,16 @@ const typeDefs = /* GraphQL */ `
     updatedAt: DateTime
   }
 
+  type ChatMessage {
+    role: String!
+    content: String!
+  }
+
+  input ChatMessageInput {
+    role: String!
+    content: String!
+  }
+
   type Query {
     persons: [Person]
     person(id: ID!): Person
