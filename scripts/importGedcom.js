@@ -105,32 +105,329 @@ function validateRelationships(individuals, families) {
 }
 
 function parseGedcom(content) {
-  const lines = content.split(/\r?\n/);
-  const records = [];
-  let cur = null;
-  for (const raw of lines) {
-    const line = raw.replace(/\r?\n/, '');
-    if (line.startsWith('0 ')) {
-      if (cur) records.push(cur);
-      cur = { lines: [line] };
-    } else {
-      if (cur) cur.lines.push(line);
-    }
-  }
-  if (cur) records.push(cur);
+  const gedcom = linesToTree(content.split(/\r?\n/));
+  console.log(`converted GEDCOM to tree structure with ${gedcom.children.length} top-level records`);
 
-  throw new Error("stop here")
-
+  console.log(`parsing GEDCOM tree into individuals and families...`);
+  let trailing_found = false;
   const individuals = {};
   const families = {};
-  const unknownLines = [];
+  for (const record of gedcom.children) {
+    if (trailing_found) {
+      throw new Error(`GEDCOM import aborted: found record after TRLR record with tag ${record.tag}`);
+    }
+    if (record.tag === 'HEAD') {
+      console.log(`skipping HEAD record:`);
+      console.log(treeToString(record));
+    } else if (record.tag === 'TRLR') {
+      trailing_found = true;
+    } else if (record.tag.endsWith('INDI')) {
+      const indi = parseIndividual(record);
+      individuals[indi.gedId] = indi;
+    } else if (record.tag.endsWith('FAM')) {
+      const fam = parseFamily(record);
+      families[fam.gedId] = fam;
+    } else {
+      throw new Error(`GEDCOM import aborted: found unexpected top-level record with tag ${record.tag}`);
+    }
+  }
+  if (!trailing_found) {
+    throw new Error(`GEDCOM import aborted: missing required TRLR record at end of file`);
+  }
+  return { individuals, families };
 
+  function linesToTree(lines) {
+    const gedcom = { tag: 'ROOT' };
+    const stack = [gedcom];
+    let line_number = 0;
+    for (const line of content.split(/\r?\n/)) {
+      line_number++;
+      if (line.length > 255) {
+        throw new Error(`GEDCOM import aborted: found line exceeding 255 characters: "${line.slice(0, 50)}..."`);
+      }
+      if (line.trim() === '') {
+        continue;
+      }
+      const m = line.match(/^(\d+)\s+(.*)$/)
+      if (!m) {
+        throw new Error(`GEDCOM import aborted: found line with invalid format (missing level number) at line ${line_number}: "${line}"`);
+      }
+      const level = parseInt(m[1]);
+      if (isNaN(level) || level < 0) {
+        throw new Error(`GEDCOM import aborted: found line with invalid level number at line ${line_number}: "${line}"`);
+      }
+      const tag = m[2];
+      if (stack.length <= level) {
+        throw new Error(`GEDCOM import aborted: found line with level ${level} but no parent at line ${line_number}: "${line}"`);
+      }
+      const node = { tag, line_number };
+      if (!stack[level].children) {
+        stack[level].children = [];
+      }
+      stack[level].children.push(node);
+      stack.splice(level+1);
+      stack.push(node);
+    }
+    return gedcom;
+  }
+
+  function treeToString(node, indent = '') {
+    let str = `${indent}${node.tag}\n`;
+    if (node.children) {
+      for (const child of node.children) {
+        str += treeToString(child, indent + '  ');
+      }
+    }
+    return str;
+  }
+
+  function parseTag(tag) {
+    const m = tag.match(/^([^\s]+)\s*(.*)$/);
+    if (!m) {      
+      throw new Error(`GEDCOM import aborted: found tag with invalid format at line ${line_number}: "${tag}"`);
+    }
+    return [m[1], m[2].trim()];
+  }
+
+  function parseFamily(record) {
+    const line_number = record.line_number;
+    const famMatch = record.tag.match(/^(@[^\s@]+@)\s+FAM$/);
+    if (!famMatch) {
+      throw new Error(`GEDCOM import aborted: found FAM record with invalid format at line ${line_number}: "${record.tag}"`);
+    }
+    const fam = {
+      gedId: famMatch[1],
+      husband: null,
+      wife: null,
+      children: [],
+      events: {},
+      raw: JSON.stringify(record)
+    };
+    for (const child of record.children || []) {
+      const [tag, data] = parseTag(child.tag);
+      if (tag === 'HUSB') {
+        fam.husband = data;
+      } else if (tag === 'WIFE') {
+        fam.wife = data;
+      } else if (tag === 'CHIL') {
+        fam.children.push(data);
+      } else if (tag === 'MARR' || tag === 'DIV') {
+        const event = parseEvent(tag, data, child.children || []);
+        fam.events[tag] = event;
+      } else {
+        throw new Error(`GEDCOM import aborted: found line with unrecognized tag "${tag}" in family record at line ${line_number}: "${child.tag}"`);
+      }
+    }
+    return fam;
+  }
+
+  function parseIndividual(record) {
+    const line_number = record.line_number;
+    const indiMatch = record.tag.match(/^(@[^\s@]+@)\s+INDI$/);
+    if (!indiMatch) {
+      throw new Error(`GEDCOM import aborted: found INDI record with invalid format at line ${line_number}: "${record.tag}"`);
+    }
+    const indi = {
+        gedId: null,
+        name: null,
+        givenName: null,
+        surname: null,
+        sex: null,
+        events: {},
+        media: [],
+        occupations: [],
+        titles: [],
+        associations: [],
+        fams: [],
+        famc: [],
+        raw: JSON.stringify(record),
+        notes: []
+      };
+    indi.gedId = indiMatch[1];
+    for (const child of record.children || []) {
+      const [tag, data] = parseTag(child.tag);
+      function noChildrenExpected() {
+        if (child.children && child.children.length > 0) {
+          throw new Error(`GEDCOM import aborted: found unexpected child lines for tag ${tag} at line ${line_number}: "${child.tag}"`);
+        }
+      }
+      if (tag === 'NAME') {
+        noChildrenExpected();
+        indi.name = data;
+      } else if (tag === 'GIVN') {
+        noChildrenExpected();
+        indi.givenName = data;
+      } else if (tag === 'SURN') {
+        noChildrenExpected();
+        indi.surname = data;
+      } else if (tag === 'SEX') {
+        noChildrenExpected();
+        indi.sex = data;
+      } else if (tag === 'FAMS') {
+        noChildrenExpected();
+        indi.fams.push(data);
+      } else if (tag === 'FAMC') {
+        noChildrenExpected();
+        indi.famc.push(data);
+      } else if (tag === 'BIRT' || tag === 'DEAT' || tag === 'MARR' || tag === 'BURI' || tag === 'BAPM') {
+        const event = parseEvent(tag, data, child.children || []);
+        indi.events[tag] = event;
+      } else if (tag === 'OBJE') {
+        indi.media.push(parseMedia(tag, data, child.children || []));
+      } else if (tag === 'NOTE') {
+        indi.notes.push(parseNote(tag, data, child.children || []));
+      } else if (tag === 'OCCU') {
+        noChildrenExpected();
+        indi.occupations.push(data);
+      } else if (tag === 'TITL') {
+        indi.titles.push(parseTitle(tag, data, child.children || []));
+      } else {
+        throw new Error(`GEDCOM import aborted: found line with unrecognized tag "${tag}" at line ${line_number}: "${child.tag}"`);
+      }
+    }
+    return indi;
+
+    function parseTitle(tag, data, children) {
+      const title = {
+        title: data,
+        date: null,
+        note: null,
+      }
+      if (data === '') {
+        throw new Error(`GEDCOM import aborted: found title with empty text at line ${line_number}: "${child.tag}"`);
+      }
+      for (const child of children) {
+        const [childTag, childData] = parseTag(child.tag);
+        if (childTag === 'DATE') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found title with empty DATE at line ${line_number}: "${child.tag}"`);
+          }
+          if (title.date) {
+            throw new Error(`GEDCOM import aborted: found title with multiple DATE entries at line ${line_number}: "${child.tag}"`);
+          }
+          title.date = childData;
+        } else if (childTag === 'NOTE') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found title with empty NOTE at line ${line_number}: "${child.tag}"`);
+          }
+          if (title.note) {
+            throw new Error(`GEDCOM import aborted: found title with multiple NOTE entries at line ${line_number}: "${child.tag}"`);
+          }
+          title.note = childData;
+        } else {
+          throw new Error(`GEDCOM import aborted: found line with unrecognized tag "${childTag}" in title at line ${line_number}: "${child.tag}"`);
+        }
+      }
+      return title;
+    }
+
+    function parseMedia(tag, data, children) {
+      if (data !== '') {
+        throw new Error(`GEDCOM import aborted: found unexpected data for media tag ${tag} at line ${line_number}: "${child.tag}"`);
+      }
+      const media = { file: null, format: null, title: null, isPrimary: false, type: null };
+      for (const child of children) {
+        const [childTag, childData] = parseTag(child.tag);
+        if (childTag === 'FILE') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found media with empty FILE at line ${line_number}: "${child.tag}"`);
+          }
+          if (media.file) {
+            throw new Error(`GEDCOM import aborted: found media with multiple FILE entries at line ${line_number}: "${child.tag}"`);
+          }
+          media.file = childData;
+        } else if (childTag === 'FORM') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found media with empty FORM at line ${line_number}: "${child.tag}"`);
+          }
+          if (media.format) {
+            throw new Error(`GEDCOM import aborted: found media with multiple FORM entries at line ${line_number}: "${child.tag}"`);
+          }
+          media.format = childData;
+        } else if (childTag === '_TYPE') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found media with empty _TYPE at line ${line_number}: "${child.tag}"`);
+          }
+          if (media.type) {
+            throw new Error(`GEDCOM import aborted: found media with multiple _TYPE entries at line ${line_number}: "${child.tag}"`);
+          }
+          media.type = childData;
+        } else if (childTag === '_PRIM') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found media with empty _PRIM at line ${line_number}: "${child.tag}"`);
+          }
+          if (media.isPrimary) {
+            throw new Error(`GEDCOM import aborted: found media with multiple _PRIM entries at line ${line_number}: "${child.tag}"`);
+          }
+          media.isPrimary = childData.toUpperCase() === 'Y';
+        } else {
+          throw new Error(`GEDCOM import aborted: found line with unrecognized tag "${childTag}" in media at line ${line_number}: "${child.tag}"`);
+        }
+      }
+      return media;
+    }
+
+    function parseNote(tag, data, children) {
+      let line = "";
+      if (data === '') {
+        throw new Error(`GEDCOM import aborted: found NOTE with empty text at line ${line_number}: "${child.tag}"`);
+      }
+      line += data;
+      for (const child of children) {
+        const [childTag, childData] = parseTag(child.tag);
+        if (childTag === 'CONT') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found CONT with empty text at line ${line_number}: "${child.tag}"`);
+          }
+          line += '\n' + childData;
+        } else if (childTag === 'CONC') {
+          if (childData === '') {
+            throw new Error(`GEDCOM import aborted: found CONC with empty text at line ${line_number}: "${child.tag}"`);
+          }
+          line += childData;
+        } else {
+          throw new Error(`GEDCOM import aborted: found line with unrecognized tag "${childTag}" in NOTE at line ${line_number}: "${child.tag}"`);
+        }
+      }
+      return line;
+    } 
+  }
+
+  function parseEvent(tag, data, children) {
+    if (data !== '' && data !== 'Y') {
+      throw new Error(`GEDCOM import aborted: found unexpected data for event tag ${tag} at line ${line_number}: "${child.tag}"`);
+    }
+    const event = { date: null, place: null };
+    for (const child of children) {
+      const [childTag, childData] = parseTag(child.tag);
+      if (childTag === 'DATE') {
+        if (childData === '') {
+          throw new Error(`GEDCOM import aborted: found event with empty DATE at line ${line_number}: "${child.tag}"`);
+        }
+        if (event.date) {
+          throw new Error(`GEDCOM import aborted: found event with multiple DATE entries at line ${line_number}: "${child.tag}"`);
+        }
+        event.date = childData;
+      } else if (childTag === 'PLAC') {
+        if (childData === '') {
+          throw new Error(`GEDCOM import aborted: found event with empty PLAC at line ${line_number}: "${child.tag}"`);
+        }
+        if (event.place) {
+          throw new Error(`GEDCOM import aborted: found event with multiple PLAC entries at line ${line_number}: "${child.tag}"`);
+        }
+        event.place = childData;
+      } else {
+        throw new Error(`GEDCOM import aborted: found line with unrecognized tag "${childTag}" in event ${tag} at line ${line_number}: "${child.tag}"`);
+      }
+    }
+    return event;
+  }
+}
+
+function _parseGedcom(content) {
   for (const r of records) {
     const first = r.lines[0];
-    const indiMatch = first.match(/^0\s+(@[^\s@]+@)\s+INDI/);
     const famMatch = first.match(/^0\s+(@[^\s@]+@)\s+FAM/);
-    const headMatch = first.match(/^0\s+HEAD/);
-    const trlrMatch = first.match(/^0\s+TRLR/);
     if (indiMatch) {
       const gedId = indiMatch[1];
       const out = {
@@ -161,31 +458,7 @@ function parseGedcom(content) {
         const level = levelMatch ? Number(levelMatch[1]) : null;
         const tag = m[1];
         const data = m[2] || '';
-        if (tag === 'NAME') {
-          out.name = data.trim();
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'GIVN') {
-          out.givenName = data.trim();
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'SURN') {
-          out.surname = data.trim();
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'SEX') {
-          out.sex = data.trim();
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'FAMS') {
-          out.fams.push(data.trim());
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'FAMC') {
-          out.famc.push(data.trim());
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'BIRT' || tag === 'DEAT' || tag === 'MARR' || tag === 'BURI' || tag === 'BAPM') {
+        if (tag === 'BIRT' || tag === 'DEAT' || tag === 'MARR' || tag === 'BURI' || tag === 'BAPM') {
           curEvent = tag;
           out.events[curEvent] = out.events[curEvent] || {};
           curAssociation = null;
@@ -194,17 +467,6 @@ function parseGedcom(content) {
           out.events[curEvent].date = data.trim();
         } else if (/^PLAC$/.test(tag) && curEvent) {
           out.events[curEvent].place = data.trim();
-        } else if (tag === 'OCCU') {
-          out.occupations.push(data.trim());
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (tag === 'TITL') {
-          if (curMediaObject && level && level > 1) {
-            curMediaObject.title = data.trim();
-          } else {
-            out.titles.push(data.trim());
-          }
-          curAssociation = null;
         } else if (tag === 'ASSO') {
           curAssociation = { target: data.trim(), type: null, relationship: null };
           out.associations.push(curAssociation);
@@ -214,27 +476,6 @@ function parseGedcom(content) {
           curAssociation.type = data.trim();
         } else if (tag === 'RELA' && curAssociation) {
           curAssociation.relationship = data.trim();
-        } else if (tag === 'OBJE') {
-          curEvent = null;
-          curAssociation = null;
-          curMediaObject = {
-            file: null,
-            format: null,
-            title: null,
-            isPrimary: false,
-            type: null
-          };
-          out.media.push(curMediaObject);
-        } else if (curMediaObject && tag === 'FILE') {
-          curMediaObject.file = data.trim();
-        } else if (curMediaObject && tag === 'FORM') {
-          curMediaObject.format = data.trim();
-        } else if (curMediaObject && tag === '_TYPE') {
-          curMediaObject.type = data.trim();
-        } else if (curMediaObject && tag === '_PRIM') {
-          curMediaObject.isPrimary = data.trim().toUpperCase() === 'Y';
-        } else if (tag === 'NOTE' || tag === 'CONT' || tag === 'CONC' || tag === 'NPFX' || tag === 'NSFX') {
-          // accepted but currently ignored
         } else {
           unknownLines.push({ recordType: 'INDI', gedId, line: l });
         }
@@ -275,7 +516,6 @@ function parseGedcom(content) {
   }
 
   failOnUnknownLines(unknownLines);
-  validateRelationships(individuals, families);
 
   return { individuals, families };
 }
@@ -295,6 +535,9 @@ async function run({ dry, json, fileArg, wipe }) {
     const parsed = parseGedcom(content);
     console.log(`[import] Parsing GEDCOM completato: trovate ${Object.keys(parsed.individuals).length} persone e ${Object.keys(parsed.families).length} famiglie.`);
 
+    validateRelationships(parsed.individuals, parsed.families);
+    console.log('[import] Validazione GEDCOM completata.');
+
     if (json) {
       console.warn('Outputting JSON to stdout.');
       console.log(JSON.stringify(parsed, null, 2));
@@ -306,8 +549,6 @@ async function run({ dry, json, fileArg, wipe }) {
       return;
     }
 
-    // Validazione relazioni e linee sconosciute già eseguita in parseGedcom
-    console.log('[import] Validazione GEDCOM completata.');
     // Try to connect to MongoDB and import
     const conn = await connect();
     if (!conn) {
@@ -316,6 +557,9 @@ async function run({ dry, json, fileArg, wipe }) {
     }
 
     if (wipe) {
+      if (dry) {
+        throw new Error('Cannot use --wipe option in dry run mode. Please remove --dry to enable wiping the database before import.');
+      }
       console.log('Cancellazione di tutte le persone e famiglie dal database...');
       await Person.deleteMany({});
       await Family.deleteMany({});
