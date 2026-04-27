@@ -424,101 +424,6 @@ function parseGedcom(content) {
   }
 }
 
-function _parseGedcom(content) {
-  for (const r of records) {
-    const first = r.lines[0];
-    const famMatch = first.match(/^0\s+(@[^\s@]+@)\s+FAM/);
-    if (indiMatch) {
-      const gedId = indiMatch[1];
-      const out = {
-        gedId,
-        name: null,
-        givenName: null,
-        surname: null,
-        sex: null,
-        events: {},
-        media: [],
-        occupations: [],
-        titles: [],
-        associations: [],
-        fams: [],
-        famc: [],
-        raw: r.lines
-      };
-      let curEvent = null;
-      let curAssociation = null;
-      let curMediaObject = null;
-      for (const l of r.lines.slice(1)) {
-        const m = l.match(/^\d+\s+([^\s]+)(?:\s+(.*))?$/);
-        if (!m) {
-          unknownLines.push({ recordType: 'INDI', gedId, line: l });
-          continue;
-        }
-        const levelMatch = l.match(/^(\d+)\s+/);
-        const level = levelMatch ? Number(levelMatch[1]) : null;
-        const tag = m[1];
-        const data = m[2] || '';
-        if (tag === 'BIRT' || tag === 'DEAT' || tag === 'MARR' || tag === 'BURI' || tag === 'BAPM') {
-          curEvent = tag;
-          out.events[curEvent] = out.events[curEvent] || {};
-          curAssociation = null;
-          curMediaObject = null;
-        } else if (/^DATE$/.test(tag) && curEvent) {
-          out.events[curEvent].date = data.trim();
-        } else if (/^PLAC$/.test(tag) && curEvent) {
-          out.events[curEvent].place = data.trim();
-        } else if (tag === 'ASSO') {
-          curAssociation = { target: data.trim(), type: null, relationship: null };
-          out.associations.push(curAssociation);
-          curEvent = null;
-          curMediaObject = null;
-        } else if (tag === 'TYPE' && curAssociation) {
-          curAssociation.type = data.trim();
-        } else if (tag === 'RELA' && curAssociation) {
-          curAssociation.relationship = data.trim();
-        } else {
-          unknownLines.push({ recordType: 'INDI', gedId, line: l });
-        }
-      }
-      individuals[gedId] = out;
-    } else if (famMatch) {
-      const gedId = famMatch[1];
-      const out = { gedId, husband: null, wife: null, children: [], events: {}, notes: [], raw: r.lines };
-      let curEvent = null;
-      for (const l of r.lines.slice(1)) {
-        const m = l.match(/^\d+\s+([^\s]+)(?:\s+(.*))?$/);
-        if (!m) {
-          unknownLines.push({ recordType: 'FAM', gedId, line: l });
-          continue;
-        }
-        const tag = m[1];
-        const data = m[2] || '';
-        if (tag === 'HUSB') out.husband = data.trim();
-        else if (tag === 'WIFE') out.wife = data.trim();
-        else if (tag === 'CHIL') out.children.push(data.trim());
-        else if (tag === 'MARR' || tag === 'DIV') { curEvent = tag; out.events[curEvent] = out.events[curEvent] || {}; }
-        else if (tag === 'DATE' && curEvent) out.events[curEvent].date = data.trim();
-        else if (tag === 'PLAC' && curEvent) out.events[curEvent].place = data.trim();
-        else if (tag === 'NOTE') out.notes.push(data.trim());
-        else if (tag === 'CONT' || tag === 'CONC') {
-          // accepted but currently ignored
-        } else {
-          unknownLines.push({ recordType: 'FAM', gedId, line: l });
-        }
-      }
-      families[gedId] = out;
-    } else if (headMatch || trlrMatch) {
-      // GEDCOM metadata/header records are accepted but ignored by the importer.
-      continue;
-    } else {
-      unknownLines.push({ recordType: 'TOP', gedId: '', line: first });
-    }
-  }
-
-  failOnUnknownLines(unknownLines);
-
-  return { individuals, families };
-}
 
 async function run({ dry, json, fileArg, wipe }) {
   console.log(`[import] Starting GEDCOM import with file: ${fileArg}, options: ${JSON.stringify({ dry, json, wipe })}`);
@@ -537,6 +442,9 @@ async function run({ dry, json, fileArg, wipe }) {
 
     validateRelationships(parsed.individuals, parsed.families);
     console.log('[import] Validazione GEDCOM completata.');
+
+    console.log(`esempio:`);
+    console.log(parsed.individuals['@I28@']);
 
     if (json) {
       console.warn('Outputting JSON to stdout.');
@@ -577,6 +485,7 @@ async function run({ dry, json, fileArg, wipe }) {
         birthDate: i.events && i.events.BIRT && i.events.BIRT.date ? i.events.BIRT.date : undefined,
         deathDate: i.events && i.events.DEAT && i.events.DEAT.date ? i.events.DEAT.date : undefined,
         events: i.events || {},
+        titles: i.titles || ['pippo'],
         media: (i.media || []).filter((entry) => entry.file),
         fams: [],
         famc: [],

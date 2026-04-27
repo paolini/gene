@@ -79,26 +79,6 @@ export default function Person({ person }) {
         </h3>
       </header>
 
-      {/* Eventi principali */}
-      {Object.keys(events).length > 0 && (
-        <section style={{ marginBottom: 18 }}>
-          <h4 style={{ fontSize: 18, margin: '0 0 8px 0', color: '#7a4b2a' }}>Eventi</h4>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 15 }}>
-            {Object.entries(eventLabels).map(([key, label]) => {
-              const ev = events[key];
-              if (!ev || (!ev.date && !ev.place)) return null;
-              return (
-                <li key={key} style={{ marginBottom: 4 }}>
-                  <strong>{label}:</strong>
-                  {ev.date ? ` ${ev.date}` : ''}
-                  {ev.place ? ` (${ev.place})` : ''}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
       {hasMedia ? (
         <section style={{ float: 'left', marginRight: 20, marginBottom: 16 }}>
           <div style={{ display: 'grid', gap: 12, alignItems: 'flex-start' }}>
@@ -129,15 +109,52 @@ export default function Person({ person }) {
       ) : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
+
+        {/* Titoli principali */}
+        {person.titles?.length > 0 && (
+          <section>
+            {false && <h4 style={{ fontSize: 18, margin: '0 0 8px 0', color: '#7a4b2a' }}>Titoli</h4>}
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 15 }}>
+              {person.titles.map((title, index) => (
+                <li key={index} style={{ marginBottom: 4 }}>
+                  {title.title}
+                  {title.date ? ` ${title.date}` : ''}
+                  {title.place ? ` (${title.place})` : ''}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Eventi principali */}
+        {Object.keys(events).length > 0 && (
+          <section>
+            <h4 style={{ fontSize: 18, margin: '0 0 8px 0', color: '#7a4b2a' }}>Eventi</h4>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 15 }}>
+              {Object.entries(eventLabels).map(([key, label]) => {
+                const ev = events[key];
+                if (!ev || (!ev.date && !ev.place)) return null;
+                return (
+                  <li key={key} style={{ marginBottom: 4 }}>
+                    <strong>{label}:</strong>
+                    {ev.date ? ` ${ev.date}` : ''}
+                    {ev.place ? ` (${ev.place})` : ''}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
         <section>
           {person.famc?.length ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {person.famc.map((family) => (
-                <li key={family.id} style={{ marginBottom: 10 }}>
+                <li key={family.id}>
                   <div>
                     Genitori: <ParentsLine family={family} />
                   </div>
-                  <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: '#7b6a59' }}>
                     Fratelli: <PersonList people={(family.children || []).filter((child) => child.id !== person.id)} />
                   </div>
                 </li>
@@ -150,11 +167,11 @@ export default function Person({ person }) {
           {person.fams?.length ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {person.fams.map((family) => (
-                <li key={family.id} style={{ marginBottom: 10 }}>
+                <li key={family.id}>
                   <div>
                     Coniuge: <PersonLink person={[family.husband, family.wife].find((candidate) => candidate && candidate.id !== person.id)} />
                   </div>
-                  <div style={{ fontSize: 13, color: '#7b6a59', marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: '#7b6a59'}}>
                     {family.children?.length
                       ? <span>Figli: <PersonList people={family.children} /></span>
                       : 'nessun figlio elencato'}
@@ -167,6 +184,9 @@ export default function Person({ person }) {
       </div>
 
       {hasMedia ? <div style={{ clear: 'both' }} /> : null}
+      { false && <div>
+        {JSON.stringify(person, null, 2)}
+      </div>}
     </article>
   );
 }

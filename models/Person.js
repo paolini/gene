@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { title } = require('node:process');
 
 const PersonMediaSchema = new mongoose.Schema({
   file: String,
@@ -16,6 +17,7 @@ const PersonSchema = new mongoose.Schema({
   deathDate: String,
   events: { type: Object, default: {} },
   media: { type: [PersonMediaSchema], default: [] },
+  titles: { type: [Object], default: [] },
   fams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Family' }],
   famc: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Family' }]
 }, { timestamps: true });

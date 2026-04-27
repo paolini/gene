@@ -18,6 +18,10 @@ const query = `
         isPrimary
         title
       }
+      titles {
+        title
+        date
+      }
       fams {
         id
         gedId
@@ -38,6 +42,7 @@ const query = `
 
 export default function Home() {
   const [persons, setPersons] = useState([]);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   async function fetchPersons() {
@@ -47,7 +52,14 @@ export default function Home() {
       body: JSON.stringify({ query })
     });
     const j = await res.json();
-    setPersons(j.data.persons || []);
+    if (j.errors) {
+      setError(j.errors.map(e => e.message).join('\n'));
+    } else {
+      setError('');
+    }
+    if (j.data?.persons) {
+      setPersons(j.data.persons || []);
+    }
   }
 
   useEffect(() => { fetchPersons(); }, []);
@@ -80,6 +92,11 @@ export default function Home() {
         {!normalizedSearch ? (
           <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#fffaf2', border: '1px solid #e2d5c3', color: '#6a5948' }}>
             Inserisci un termine di ricerca per visualizzare le persone corrispondenti.
+          </div>
+        ) : null}
+        {error ? (
+          <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#ffe2e2', border: '1px solid #e2b5b5', color: '#6a5948' }}>
+            Errore: {error}
           </div>
         ) : null}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>

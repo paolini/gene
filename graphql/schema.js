@@ -131,6 +131,12 @@ const typeDefs = /* GraphQL */ `
     BAPM: EventDetails
   }
 
+  type Title {
+    title: String
+    date: String
+    note: String
+  }
+
   type PersonMedia {
     file: String
     format: String
@@ -147,6 +153,7 @@ const typeDefs = /* GraphQL */ `
     birthDate: String
     deathDate: String
     events: Events
+    titles: [Title]
     media: [PersonMedia!]!
     fams: [Family]
     famc: [Family]
